@@ -12,6 +12,7 @@ import { formatLabel } from "../../utils/formatters";
 import { PRODUCT_TYPES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { isBlank } from "../../utils/validators";
+import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyForm = { productName: "", productType: "", description: "", isActive: true };
 
@@ -132,7 +133,15 @@ export default function AdminProducts() {
             <h1>Products</h1>
             <p className="page-subtitle">Manage insurance product categories</p>
           </div>
-          <Button onClick={openCreateForm}>+ New Product</Button>
+          <div className="modal-actions" style={{ marginTop: 0 }}>
+            <Button variant="secondary" onClick={() => exportToCsv("products", data?.content || [], [
+              { header: "Name", value: (p) => p.productName },
+              { header: "Type", value: (p) => p.productType },
+              { header: "Description", value: (p) => p.description },
+              { header: "Active", value: (p) => p.isActive ? "Yes" : "No" },
+            ])}>Export CSV</Button>
+            <Button onClick={openCreateForm}>+ New Product</Button>
+          </div>
         </div>
       </div>
 

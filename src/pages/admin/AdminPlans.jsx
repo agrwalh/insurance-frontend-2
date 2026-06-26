@@ -13,6 +13,7 @@ import { formatCurrency, formatLabel } from "../../utils/formatters";
 import { PREMIUM_TYPES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { isBlank, isPositiveAmount, parseStrictNumber } from "../../utils/validators";
+import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyForm = {
   productId: "", planName: "", coverageAmount: "", premiumAmount: "", premiumType: "", durationYears: "", termsAndConditions: "",
@@ -176,7 +177,17 @@ export default function AdminPlans() {
             <h1>Plans</h1>
             <p className="page-subtitle">Manage plans offered under each product</p>
           </div>
-          <Button onClick={openCreateForm}>+ New Plan</Button>
+          <div className="modal-actions" style={{ marginTop: 0 }}>
+            <Button variant="secondary" onClick={() => exportToCsv("plans", data?.content || [], [
+              { header: "Plan", value: (p) => p.planName },
+              { header: "Product", value: (p) => p.productName },
+              { header: "Coverage", value: (p) => p.coverageAmount },
+              { header: "Premium", value: (p) => p.premiumAmount },
+              { header: "Premium Type", value: (p) => p.premiumType },
+              { header: "Duration", value: (p) => p.durationYears },
+            ])}>Export CSV</Button>
+            <Button onClick={openCreateForm}>+ New Plan</Button>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { claimApi } from "../../api/claimApi";
+import { policyApi } from "../../api/policyApi";
 import { documentApi } from "../../api/documentApi";
 import Card from "../../components/common/Card";
 import Loader from "../../components/common/Loader";
@@ -21,6 +22,7 @@ export default function AgentClaimDetail() {
   const navigate = useNavigate();
 
   const [claim, setClaim] = useState(null);
+  const [policy, setPolicy] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,14 +44,16 @@ export default function AgentClaimDetail() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [claimRes, docsRes, historyRes] = await Promise.all([
-        claimApi.getById(claimId),
+      const claimRes = await claimApi.getById(claimId);
+      setClaim(claimRes.data.data);
+      const [docsRes, historyRes, policyRes] = await Promise.all([
         documentApi.getByClaim(claimId),
         claimApi.getHistory(claimId, { page: 0, size: 50 }),
+        policyApi.getById(claimRes.data.data.policyId),
       ]);
-      setClaim(claimRes.data.data);
       setDocuments(docsRes.data.data);
       setHistory(historyRes.data.data.content);
+      setPolicy(policyRes.data.data);
     } catch (err) {
       setError("Could not load claim details.");
     } finally {
@@ -136,6 +140,22 @@ export default function AgentClaimDetail() {
             <div><dt>Submitted</dt><dd>{formatDateTime(claim.createdAt)}</dd></div>
           </dl>
         </Card>
+
+        {policy && (
+          <Card title="Policy Snapshot">
+            <dl className="detail-list">
+              <div><dt>Policy Number</dt><dd>{policy.policyNumber}</dd></div>
+              <div><dt>Plan</dt><dd>{policy.planName}</dd></div>
+              <div><dt>Product Type</dt><dd>{formatLabel(policy.productType)}</dd></div>
+              <div><dt>Coverage</dt><dd>{formatCurrency(policy.coverageAmount)}</dd></div>
+              <div><dt>Premium</dt><dd>{formatCurrency(policy.premiumAmount)} {policy.premiumType === "ANNUAL" ? "/ year" : ""}</dd></div>
+              <div><dt>Policy Status</dt><dd><StatusBadge status={policy.status} /></dd></div>
+              <div><dt>Start - End</dt><dd>{formatDate(policy.startDate)} → {formatDate(policy.endDate)}</dd></div>
+              <div><dt>Total Paid</dt><dd>{formatCurrency(policy.totalPremiumPaid)}</dd></div>
+              {policy.premiumType === "ANNUAL" && <div><dt>Premiums Paid</dt><dd>{policy.premiumsPaid ?? 0}/{policy.durationYears ?? "-"}</dd></div>}
+            </dl>
+          </Card>
+        )}
 
         <Card title="Status History">
           {history.length === 0 ? (

@@ -12,6 +12,7 @@ import { formatLabel, formatDate } from "../../utils/formatters";
 import { ROLES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { isBlank, isValidEmail, isValidMobile, passwordStrength } from "../../utils/validators";
+import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyAgentForm = { fullName: "", email: "", password: "", mobileNumber: "" };
 
@@ -21,6 +22,7 @@ export default function AdminUsers() {
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [agentForm, setAgentForm] = useState(emptyAgentForm);
   const [statusModalUser, setStatusModalUser] = useState(null);
+  const [viewUser, setViewUser] = useState(null);
   const [statusReason, setStatusReason] = useState("");
   const [statusReasonError, setStatusReasonError] = useState("");
   const [success, setSuccess] = useState("");
@@ -144,7 +146,17 @@ export default function AdminUsers() {
             <h1>Users</h1>
             <p className="page-subtitle">Manage agents and view all platform users</p>
           </div>
-          <Button onClick={() => setShowAgentForm(true)}>+ New Agent</Button>
+          <div className="modal-actions" style={{ marginTop: 0 }}>
+            <Button variant="secondary" onClick={() => exportToCsv("users", data?.content || [], [
+              { header: "Name", value: (u) => u.fullName },
+              { header: "Email", value: (u) => u.email },
+              { header: "Mobile", value: (u) => u.mobileNumber },
+              { header: "Role", value: (u) => u.role },
+              { header: "Active", value: (u) => u.isActive ? "Yes" : "No" },
+              { header: "Joined", value: (u) => u.createdAt },
+            ])}>Export CSV</Button>
+            <Button onClick={() => setShowAgentForm(true)}>+ New Agent</Button>
+          </div>
         </div>
       </div>
 
@@ -177,6 +189,7 @@ export default function AdminUsers() {
                   </td>
                   <td>{formatDate(user.createdAt)}</td>
                   <td>
+                    <button className="link-btn" onClick={() => setViewUser(user)}>View</button>
                     <button className="link-btn" onClick={() => openStatusModal(user)}>
                       {user.isActive ? "Deactivate" : "Activate"}
                     </button>
@@ -221,6 +234,25 @@ export default function AdminUsers() {
                 <Button type="submit" loading={saving}>Create Agent</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewUser && (
+        <div className="modal-overlay" onClick={() => setViewUser(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>{viewUser.fullName}</h3>
+            <p className="form-section-hint">Read-only account profile. Only the owner can update personal details.</p>
+            <dl className="detail-list">
+              <div><dt>Email</dt><dd>{viewUser.email}</dd></div>
+              <div><dt>Mobile</dt><dd>{viewUser.mobileNumber}</dd></div>
+              <div><dt>Role</dt><dd>{formatLabel(viewUser.role)}</dd></div>
+              <div><dt>Status</dt><dd>{viewUser.isActive ? "Active" : "Inactive"}</dd></div>
+              <div><dt>Joined</dt><dd>{formatDate(viewUser.createdAt)}</dd></div>
+            </dl>
+            <div className="modal-actions">
+              <Button type="button" variant="secondary" onClick={() => setViewUser(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

@@ -10,6 +10,7 @@ import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { CLAIM_STATUSES } from "../../utils/constants";
+import { exportToCsv } from "../../utils/exportCsv";
 
 export default function AdminClaims() {
   const [page, setPage] = useState(0);
@@ -44,6 +45,18 @@ export default function AdminClaims() {
           options={CLAIM_STATUSES}
           placeholder="All statuses"
         />
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button className="btn btn-secondary" onClick={() => exportToCsv("claims", data?.content || [], [
+          { header: "Claim No", value: (c) => c.claimNumber },
+          { header: "Customer", value: (c) => c.customerName },
+          { header: "Policy", value: (c) => c.policyNumber },
+          { header: "Amount", value: (c) => c.claimAmount },
+          { header: "Incident Date", value: (c) => c.incidentDate },
+          { header: "Status", value: (c) => c.claimStatus },
+          { header: "Assigned Agent", value: (c) => c.assignedAgentName || "" },
+        ])}>Export CSV</button>
       </div>
 
       {data?.content?.length === 0 ? (

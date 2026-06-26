@@ -7,6 +7,7 @@ import Pagination from "../../components/common/Pagination";
 import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import { formatCurrency, formatDateTime, formatLabel } from "../../utils/formatters";
+import { exportToCsv } from "../../utils/exportCsv";
 
 export default function AllPayments() {
   const [page, setPage] = useState(0);
@@ -23,6 +24,17 @@ export default function AllPayments() {
       </div>
 
       <Alert type="error" message={error} />
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button className="btn btn-secondary" onClick={() => exportToCsv("payments", data?.content || [], [
+          { header: "Policy", value: (p) => p.policyNumber },
+          { header: "Amount", value: (p) => p.amount },
+          { header: "Mode", value: (p) => p.paymentMode },
+          { header: "Reference", value: (p) => p.transactionReference },
+          { header: "Date", value: (p) => p.paymentDate },
+          { header: "Status", value: (p) => p.paymentStatus },
+        ])}>Export CSV</button>
+      </div>
 
       {data?.content?.length === 0 ? (
         <EmptyState message="No payments recorded yet." />

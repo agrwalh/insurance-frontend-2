@@ -12,8 +12,12 @@ import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import Button from "../../components/common/Button";
 import { formatCurrency, formatDate } from "../../utils/formatters";
-import { extractErrorMessage, isBlank, isFutureOrToday } from "../../utils/validators";
-
+import {
+  extractErrorMessage,
+  isBlank,
+  isFutureOrToday,
+} from "../../utils/validators";
+import { exportToCsv } from "../../utils/exportCsv";
 
 export default function AllPolicies() {
   const [page, setPage] = useState(0);
@@ -23,34 +27,59 @@ export default function AllPolicies() {
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [plans, setPlans] = useState([]);
-  const [issueForm, setIssueForm] = useState({ customerId: "", planId: "", startDate: new Date().toISOString().split("T")[0] });
+  const [issueForm, setIssueForm] = useState({
+    customerId: "",
+    planId: "",
+    startDate: new Date().toISOString().split("T")[0],
+  });
   const [issueErrors, setIssueErrors] = useState({});
   const [issuing, setIssuing] = useState(false);
 
-  const { data, loading, error: fetchError, refetch } = useFetch(
-    () => policyApi.getAll({ page, size: 10 }),
-    [page]
-  );
+  const {
+    data,
+    loading,
+    error: fetchError,
+    refetch,
+  } = useFetch(() => policyApi.getAll({ page, size: 10 }), [page]);
 
   useEffect(() => {
     if (!showIssueForm) return;
     Promise.all([
-      customerApi.getAll({ page: 0, size: 100, sortBy: "createdAt", direction: "desc" }),
-      planApi.getActive({ page: 0, size: 100, sortBy: "createdAt", direction: "desc" }),
+      customerApi.getAll({
+        page: 0,
+        size: 100,
+        sortBy: "createdAt",
+        direction: "desc",
+      }),
+      planApi.getActive({
+        page: 0,
+        size: 100,
+        sortBy: "createdAt",
+        direction: "desc",
+      }),
     ])
       .then(([customerRes, planRes]) => {
         setCustomers(customerRes.data.data.content || []);
         setPlans(planRes.data.data.content || []);
       })
-      .catch((err) => setError(extractErrorMessage(err, "Could not load customers/plans for policy issuance.")));
+      .catch((err) =>
+        setError(
+          extractErrorMessage(
+            err,
+            "Could not load customers/plans for policy issuance.",
+          ),
+        ),
+      );
   }, [showIssueForm]);
 
   const validateIssueForm = () => {
     const errors = {};
     if (isBlank(issueForm.customerId)) errors.customerId = "Select customer";
     if (isBlank(issueForm.planId)) errors.planId = "Select plan";
-    if (isBlank(issueForm.startDate)) errors.startDate = "Start date is required";
-    else if (!isFutureOrToday(issueForm.startDate)) errors.startDate = "Start date cannot be in the past";
+    if (isBlank(issueForm.startDate))
+      errors.startDate = "Start date is required";
+    else if (!isFutureOrToday(issueForm.startDate))
+      errors.startDate = "Start date cannot be in the past";
     return errors;
   };
 
@@ -70,7 +99,11 @@ export default function AllPolicies() {
       });
       setSuccess("Policy issued successfully. It is now pending payment.");
       setShowIssueForm(false);
-      setIssueForm({ customerId: "", planId: "", startDate: new Date().toISOString().split("T")[0] });
+      setIssueForm({
+        customerId: "",
+        planId: "",
+        startDate: new Date().toISOString().split("T")[0],
+      });
       refetch();
     } catch (err) {
       setError(extractErrorMessage(err, "Could not issue policy."));
@@ -80,7 +113,10 @@ export default function AllPolicies() {
   };
 
   const handleCancel = async (policyId, policyNumber) => {
-    if (!window.confirm(`Cancel policy ${policyNumber}? This cannot be undone.`)) return;
+    if (
+      !window.confirm(`Cancel policy ${policyNumber}? This cannot be undone.`)
+    )
+      return;
 
     setError("");
     setSuccess("");
@@ -104,13 +140,39 @@ export default function AllPolicies() {
         <div className="page-header-row">
           <div>
             <h1>All Policies</h1>
-            <p className="page-subtitle">Every policy issued across all customers</p>
+            <p className="page-subtitle">
+              Every policy issued across all customers
+            </p>
           </div>
-          <Button onClick={() => setShowIssueForm(true)}>+ Issue Policy</Button>
+          <div className="modal-actions" style={{ marginTop: 0 }}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                exportToCsv("policies", data?.content || [], [
+                  { header: "Policy No", value: (p) => p.policyNumber },
+                  { header: "Customer", value: (p) => p.customerName },
+                  { header: "Plan", value: (p) => p.planName },
+                  { header: "Coverage", value: (p) => p.coverageAmount },
+                  { header: "Premium", value: (p) => p.premiumAmount },
+                  { header: "Start Date", value: (p) => p.startDate },
+                  { header: "Status", value: (p) => p.status },
+                ])
+              }
+            >
+              Export CSV
+            </Button>
+            <Button onClick={() => setShowIssueForm(true)}>
+              + Issue Policy
+            </Button>
+          </div>
         </div>
       </div>
 
-      <Alert type="error" message={error || fetchError} onClose={() => setError("")} />
+      <Alert
+        type="error"
+        message={error || fetchError}
+        onClose={() => setError("")}
+      />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
       {data?.content?.length === 0 ? (
@@ -139,13 +201,18 @@ export default function AllPolicies() {
                   <td>{formatCurrency(policy.coverageAmount)}</td>
                   <td>{formatCurrency(policy.premiumAmount)}</td>
                   <td>{formatDate(policy.startDate)}</td>
-                  <td><StatusBadge status={policy.status} /></td>
                   <td>
-                    {(policy.status === "ACTIVE" || policy.status === "PENDING_PAYMENT") && (
+                    <StatusBadge status={policy.status} />
+                  </td>
+                  <td>
+                    {(policy.status === "ACTIVE" ||
+                      policy.status === "PENDING_PAYMENT") && (
                       <button
                         className="link-btn link-btn-danger"
                         disabled={cancellingId === policy.policyId}
-                        onClick={() => handleCancel(policy.policyId, policy.policyNumber)}
+                        onClick={() =>
+                          handleCancel(policy.policyId, policy.policyNumber)
+                        }
                       >
                         Cancel
                       </button>
@@ -165,19 +232,26 @@ export default function AllPolicies() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3>Issue Policy to Customer</h3>
             <p className="form-section-hint">
-              Agent/Admin assisted issuance creates a policy in Pending Payment state.
+              Agent/Admin assisted issuance creates a policy in Pending Payment
+              state.
             </p>
             <form onSubmit={handleIssuePolicy} noValidate>
               <Select
                 label="Customer"
                 value={issueForm.customerId}
                 onChange={(e) => {
-                  setIssueForm((prev) => ({ ...prev, customerId: e.target.value }));
+                  setIssueForm((prev) => ({
+                    ...prev,
+                    customerId: e.target.value,
+                  }));
                   setIssueErrors((prev) => ({ ...prev, customerId: "" }));
                 }}
                 error={issueErrors.customerId}
                 placeholder="Select customer"
-                options={customers.map((c) => ({ value: c.customerId, label: `${c.fullName} (${c.email})` }))}
+                options={customers.map((c) => ({
+                  value: c.customerId,
+                  label: `${c.fullName} (${c.email})`,
+                }))}
               />
               <Select
                 label="Active Plan"
@@ -188,22 +262,36 @@ export default function AllPolicies() {
                 }}
                 error={issueErrors.planId}
                 placeholder="Select plan"
-                options={plans.map((p) => ({ value: p.planId, label: `${p.planName} — ${p.productType} — ${formatCurrency(p.premiumAmount)}` }))}
+                options={plans.map((p) => ({
+                  value: p.planId,
+                  label: `${p.planName} — ${p.productType} — ${formatCurrency(p.premiumAmount)}`,
+                }))}
               />
               <Input
                 label="Start Date"
                 type="date"
                 value={issueForm.startDate}
                 onChange={(e) => {
-                  setIssueForm((prev) => ({ ...prev, startDate: e.target.value }));
+                  setIssueForm((prev) => ({
+                    ...prev,
+                    startDate: e.target.value,
+                  }));
                   setIssueErrors((prev) => ({ ...prev, startDate: "" }));
                 }}
                 error={issueErrors.startDate}
                 min={new Date().toISOString().split("T")[0]}
               />
               <div className="modal-actions">
-                <Button type="button" variant="secondary" onClick={() => setShowIssueForm(false)}>Cancel</Button>
-                <Button type="submit" loading={issuing}>Issue Policy</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowIssueForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" loading={issuing}>
+                  Issue Policy
+                </Button>
               </div>
             </form>
           </div>

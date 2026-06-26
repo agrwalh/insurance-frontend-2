@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { customerApi } from "../../api/customerApi";
 import Input from "../../components/common/Input";
+import Select from "../../components/common/Select";
 import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import Card from "../../components/common/Card";
 import Loader from "../../components/common/Loader";
 import { useFormErrors } from "../../hooks/useFormErrors";
+import { NOMINEE_RELATIONS } from "../../utils/constants";
 import { isBlank, isValidPinCode, isAtLeast18YearsOld, isRealisticDob, isPastOrToday } from "../../utils/validators";
 
 const emptyForm = {
@@ -197,14 +199,14 @@ export default function CustomerProfile() {
               placeholder="Full name of nominee"
               maxLength={100}
             />
-            <Input
+            <Select
               label="Nominee Relation"
               name="nomineeRelation"
               value={form.nomineeRelation}
               onChange={handleChange}
               error={fieldErrors.nomineeRelation}
-              placeholder="e.g. Spouse, Parent"
-              maxLength={50}
+              options={NOMINEE_RELATIONS}
+              placeholder="Select relation"
             />
           </div>
 
