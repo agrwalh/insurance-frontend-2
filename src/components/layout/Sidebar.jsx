@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { formatLabel } from "../../utils/formatters";
 
 const CUSTOMER_LINKS = [
   { to: "/customer/dashboard", label: "Dashboard", icon: "⚡" },
@@ -59,7 +60,7 @@ export default function Sidebar() {
           </p>
           <p style={{ fontSize: "0.67rem", color: "var(--slate-400)",
             textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {user.role}
+            {formatLabel(user.role)}
           </p>
         </div>
       </div>

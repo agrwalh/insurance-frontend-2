@@ -11,16 +11,16 @@ import EmptyState from "../../components/common/EmptyState";
 import { formatLabel, formatDate } from "../../utils/formatters";
 import { ROLES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank, isValidEmail, isValidMobile, passwordStrength } from "../../utils/validators";
+import { isBlank, isMeaningfulText, isValidEmail, isValidMobile, isValidPersonName, passwordStrength } from "../../utils/validators";
 import { exportToCsv } from "../../utils/exportCsv";
 
-const emptyAgentForm = { fullName: "", email: "", password: "", mobileNumber: "" };
+const emptyOfficerForm = { fullName: "", email: "", password: "", mobileNumber: "" };
 
 export default function AdminUsers() {
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState("");
-  const [showAgentForm, setShowAgentForm] = useState(false);
-  const [agentForm, setAgentForm] = useState(emptyAgentForm);
+  const [showOfficerForm, setShowOfficerForm] = useState(false);
+  const [officerForm, setOfficerForm] = useState(emptyOfficerForm);
   const [statusModalUser, setStatusModalUser] = useState(null);
   const [viewUser, setViewUser] = useState(null);
   const [statusReason, setStatusReason] = useState("");
@@ -39,45 +39,45 @@ export default function AdminUsers() {
     setPage(0);
   };
 
-  const handleAgentFormChange = (e) => {
+  const handleOfficerFormChange = (e) => {
     const { name, value } = e.target;
     const cleanedValue = name === "mobileNumber" ? value.replace(/\D/g, "").slice(0, 10) : value;
-    setAgentForm((prev) => ({ ...prev, [name]: cleanedValue }));
+    setOfficerForm((prev) => ({ ...prev, [name]: cleanedValue }));
     clearFieldError(name);
   };
 
-  const validateAgentForm = () => {
+  const validateOfficerForm = () => {
     const errors = {};
 
-    if (isBlank(agentForm.fullName)) {
+    if (isBlank(officerForm.fullName)) {
       errors.fullName = "Full name is required";
-    } else if (agentForm.fullName.trim().length < 2) {
-      errors.fullName = "Name seems too short";
+    } else if (!isValidPersonName(officerForm.fullName)) {
+      errors.fullName = "Enter a valid full name";
     }
 
-    if (isBlank(agentForm.email)) {
+    if (isBlank(officerForm.email)) {
       errors.email = "Email is required";
-    } else if (!isValidEmail(agentForm.email)) {
+    } else if (!isValidEmail(officerForm.email)) {
       errors.email = "Enter a valid email address";
     }
 
-    const strength = passwordStrength(agentForm.password);
+    const strength = passwordStrength(officerForm.password);
     if (!strength.valid) errors.password = strength.message;
 
-    if (isBlank(agentForm.mobileNumber)) {
+    if (isBlank(officerForm.mobileNumber)) {
       errors.mobileNumber = "Mobile number is required";
-    } else if (!isValidMobile(agentForm.mobileNumber)) {
+    } else if (!isValidMobile(officerForm.mobileNumber)) {
       errors.mobileNumber = "Enter a valid 10-digit Indian mobile number (starts with 6-9)";
     }
 
     return errors;
   };
 
-  const handleCreateAgent = async (e) => {
+  const handleCreateOfficer = async (e) => {
     e.preventDefault();
     clearAll();
 
-    const errors = validateAgentForm();
+    const errors = validateOfficerForm();
     if (Object.keys(errors).length > 0) {
       Object.entries(errors).forEach(([field, message]) => setFieldError(field, message));
       return;
@@ -86,13 +86,13 @@ export default function AdminUsers() {
     setSaving(true);
     try {
       await userApi.createAgent({
-        ...agentForm,
-        fullName: agentForm.fullName.trim(),
-        email: agentForm.email.trim().toLowerCase(),
+        ...officerForm,
+        fullName: officerForm.fullName.trim(),
+        email: officerForm.email.trim().toLowerCase(),
       });
-      setSuccess("Agent created successfully.");
-      setShowAgentForm(false);
-      setAgentForm(emptyAgentForm);
+      setSuccess("Insurance Operations Officer created successfully.");
+      setShowOfficerForm(false);
+      setOfficerForm(emptyOfficerForm);
       refetch();
     } catch (err) {
       handleApiError(err);
@@ -115,8 +115,8 @@ export default function AdminUsers() {
       setStatusReasonError("Please provide a reason for this status change.");
       return;
     }
-    if (statusReason.trim().length < 5) {
-      setStatusReasonError("Please provide a more specific reason (at least 5 characters).");
+    if (!isMeaningfulText(statusReason, { minLength: 8, minWords: 2, maxLength: 500 })) {
+      setStatusReasonError("Please provide a meaningful reason with at least 2 words.");
       return;
     }
 
@@ -138,13 +138,29 @@ export default function AdminUsers() {
 
   if (loading) return <Loader label="Loading users..." />;
 
+  const users = data?.content || [];
+  const activeUsers = users.filter((user) => user.isActive).length;
+  const officers = users.filter((user) => user.role === "AGENT").length;
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="ops-page">
+      <div className="ops-hero users-hero">
+        <div>
+          <span className="eyebrow">Access Management</span>
+          <h1>Users</h1>
+          <p>Manage customers, officers, access status, and audit-ready account decisions from a clean control panel.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{activeUsers}</strong>
+          <span>active accounts</span>
+          <p>{officers} insurance operations officers visible</p>
+        </div>
+      </div>
+
+      <div className="page-header ops-toolbar-header">
         <div className="page-header-row">
           <div>
-            <h1>Users</h1>
-            <p className="page-subtitle">Manage agents and view all platform users</p>
+            <p className="page-subtitle">Manage insurance operations officers and view all platform users</p>
           </div>
           <div className="modal-actions" style={{ marginTop: 0 }}>
             <Button variant="secondary" onClick={() => exportToCsv("users", data?.content || [], [
@@ -155,7 +171,7 @@ export default function AdminUsers() {
               { header: "Active", value: (u) => u.isActive ? "Yes" : "No" },
               { header: "Joined", value: (u) => u.createdAt },
             ])}>Export CSV</Button>
-            <Button onClick={() => setShowAgentForm(true)}>+ New Agent</Button>
+            <Button onClick={() => setShowOfficerForm(true)}>+ New Insurance Operations Officer</Button>
           </div>
         </div>
       </div>
@@ -163,20 +179,22 @@ export default function AdminUsers() {
       <Alert type="error" message={generalError || fetchError} onClose={() => clearAll()} />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      <div className="filter-bar">
-        <Select name="role" value={roleFilter} onChange={handleRoleFilterChange} options={Object.values(ROLES)} placeholder="All roles" />
+      <div className="ops-toolbar split-toolbar">
+        <div className="filter-bar">
+          <Select name="role" value={roleFilter} onChange={handleRoleFilterChange} options={Object.values(ROLES)} placeholder="All roles" />
+        </div>
       </div>
 
-      {data?.content?.length === 0 ? (
+      {users.length === 0 ? (
         <EmptyState message="No users found." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ops-table">
           <table className="data-table">
             <thead>
               <tr><th>Name</th><th>Email</th><th>Mobile</th><th>Role</th><th>Status</th><th>Joined</th><th></th></tr>
             </thead>
             <tbody>
-              {data?.content?.map((user) => (
+              {users.map((user) => (
                 <tr key={user.userId}>
                   <td>{user.fullName}</td>
                   <td>{user.email}</td>
@@ -203,19 +221,19 @@ export default function AdminUsers() {
 
       <Pagination pageData={data} onPageChange={setPage} />
 
-      {showAgentForm && (
-        <div className="modal-overlay" onClick={() => setShowAgentForm(false)}>
+      {showOfficerForm && (
+        <div className="modal-overlay" onClick={() => setShowOfficerForm(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Create Agent</h3>
-            <form onSubmit={handleCreateAgent} noValidate>
-              <Input label="Full Name" name="fullName" value={agentForm.fullName} onChange={handleAgentFormChange} error={fieldErrors.fullName} maxLength={100} />
-              <Input label="Email" name="email" type="email" value={agentForm.email} onChange={handleAgentFormChange} error={fieldErrors.email} maxLength={150} />
+            <h3>Create Insurance Operations Officer</h3>
+            <form onSubmit={handleCreateOfficer} noValidate>
+              <Input label="Full Name" name="fullName" value={officerForm.fullName} onChange={handleOfficerFormChange} error={fieldErrors.fullName} maxLength={100} />
+              <Input label="Email" name="email" type="email" value={officerForm.email} onChange={handleOfficerFormChange} error={fieldErrors.email} maxLength={150} />
               <Input
                 label="Password"
                 name="password"
                 type="password"
-                value={agentForm.password}
-                onChange={handleAgentFormChange}
+                value={officerForm.password}
+                onChange={handleOfficerFormChange}
                 error={fieldErrors.password}
                 helperText={!fieldErrors.password ? "At least 8 characters, with a letter and a number" : undefined}
                 placeholder="At least 8 characters"
@@ -223,15 +241,15 @@ export default function AdminUsers() {
               <Input
                 label="Mobile Number"
                 name="mobileNumber"
-                value={agentForm.mobileNumber}
-                onChange={handleAgentFormChange}
+                value={officerForm.mobileNumber}
+                onChange={handleOfficerFormChange}
                 error={fieldErrors.mobileNumber}
                 inputMode="numeric"
                 maxLength={10}
               />
               <div className="modal-actions">
-                <Button type="button" variant="secondary" onClick={() => setShowAgentForm(false)}>Cancel</Button>
-                <Button type="submit" loading={saving}>Create Agent</Button>
+                <Button type="button" variant="secondary" onClick={() => setShowOfficerForm(false)}>Cancel</Button>
+                <Button type="submit" loading={saving}>Create Insurance Operations Officer</Button>
               </div>
             </form>
           </div>

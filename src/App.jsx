@@ -12,6 +12,7 @@ import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import CustomerProfile from "./pages/customer/CustomerProfile";
 import BrowsePlans from "./pages/customer/BrowsePlans";
 import MyPolicies from "./pages/customer/MyPolicies";
+import PolicyDetail from "./pages/customer/PolicyDetail";
 import MyClaims from "./pages/customer/MyClaims";
 import FileClaim from "./pages/customer/FileClaim";
 import ClaimDetail from "./pages/customer/ClaimDetail";
@@ -83,6 +84,14 @@ export default function App() {
               }
             />
             <Route
+              path="/customer/policies/:policyId"
+              element={
+                <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                  <PolicyDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/customer/claims"
               element={
                 <ProtectedRoute allowedRoles={["CUSTOMER"]}>
@@ -107,7 +116,7 @@ export default function App() {
               }
             />
 
-            {/* Agent */}
+            {/* Insurance Operations Officer */}
             <Route
               path="/agent/dashboard"
               element={

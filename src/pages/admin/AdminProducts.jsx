@@ -11,7 +11,7 @@ import EmptyState from "../../components/common/EmptyState";
 import { formatLabel } from "../../utils/formatters";
 import { PRODUCT_TYPES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank } from "../../utils/validators";
+import { isBlank, isMeaningfulText, isValidPlanOrProductName } from "../../utils/validators";
 import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyForm = { productName: "", productType: "", description: "", isActive: true };
@@ -55,8 +55,8 @@ export default function AdminProducts() {
     const errors = {};
     if (isBlank(form.productName)) {
       errors.productName = "Product name is required";
-    } else if (form.productName.trim().length < 3) {
-      errors.productName = "Name must be at least 3 characters";
+    } else if (!isValidPlanOrProductName(form.productName)) {
+      errors.productName = "Use 3-150 valid letters/numbers and basic punctuation";
     } else if (form.productName.trim().length > 150) {
       errors.productName = "Name is too long (max 150 characters)";
     }
@@ -67,10 +67,8 @@ export default function AdminProducts() {
 
     if (isBlank(form.description)) {
       errors.description = "Description is required";
-    } else if (form.description.trim().length < 10) {
-      errors.description = "Description must be at least 10 characters";
-    } else if (form.description.trim().length > 1000) {
-      errors.description = "Description is too long (max 1000 characters)";
+    } else if (!isMeaningfulText(form.description, { minLength: 10, minWords: 3, maxLength: 1000 })) {
+      errors.description = "Description must be meaningful, 10-1000 characters, and at least 3 words";
     }
 
     return errors;
@@ -125,12 +123,25 @@ export default function AdminProducts() {
 
   if (loading) return <Loader label="Loading products..." />;
 
+  const products = data?.content || [];
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="catalog-page">
+      <div className="catalog-hero compact-admin-hero">
+        <div>
+          <span className="eyebrow">Catalog Control</span>
+          <h1>Products</h1>
+          <p>Keep insurance categories clean, descriptive, and ready for customer-facing discovery.</p>
+        </div>
+        <div className="catalog-summary-grid">
+          <div><strong>{products.length}</strong><span>Total</span></div>
+          <div><strong>{products.filter((p) => p.isActive).length}</strong><span>Active</span></div>
+        </div>
+      </div>
+
+      <div className="page-header catalog-toolbar">
         <div className="page-header-row">
           <div>
-            <h1>Products</h1>
             <p className="page-subtitle">Manage insurance product categories</p>
           </div>
           <div className="modal-actions" style={{ marginTop: 0 }}>
@@ -148,16 +159,16 @@ export default function AdminProducts() {
       <Alert type="error" message={generalError || fetchError} onClose={() => clearAll()} />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      {data?.content?.length === 0 ? (
+      {products.length === 0 ? (
         <EmptyState message="No products yet. Create your first one." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap catalog-table">
           <table className="data-table">
             <thead>
               <tr><th>Name</th><th>Type</th><th>Description</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              {data?.content?.map((product) => (
+              {products.map((product) => (
                 <tr key={product.productId}>
                   <td>{product.productName}</td>
                   <td>{formatLabel(product.productType)}</td>

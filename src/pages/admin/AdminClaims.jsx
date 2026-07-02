@@ -28,15 +28,27 @@ export default function AdminClaims() {
 
   if (loading) return <Loader label="Loading claims..." />;
 
+  const claims = data?.content || [];
+  const decisionReady = claims.filter((claim) => String(claim.claimStatus || "").startsWith("RECOMMENDED")).length;
+
   return (
-    <div>
-      <div className="page-header">
-        <h1>Claims</h1>
-        <p className="page-subtitle">Make final decisions on agent-reviewed claims</p>
+    <div className="ops-page">
+      <div className="ops-hero claims-hero">
+        <div>
+          <span className="eyebrow">Decision Desk</span>
+          <h1>Claims</h1>
+          <p>Review claim movement, filter by status, and make final decisions with clear operational context.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{decisionReady}</strong>
+          <span>ready for decision</span>
+          <p>{claims.length} claims visible on this page</p>
+        </div>
       </div>
 
       <Alert type="error" message={error} />
 
+      <div className="ops-toolbar split-toolbar">
       <div className="filter-bar">
         <Select
           name="status"
@@ -47,7 +59,6 @@ export default function AdminClaims() {
         />
       </div>
 
-      <div style={{ marginBottom: "1rem" }}>
         <button className="btn btn-secondary" onClick={() => exportToCsv("claims", data?.content || [], [
           { header: "Claim No", value: (c) => c.claimNumber },
           { header: "Customer", value: (c) => c.customerName },
@@ -55,14 +66,14 @@ export default function AdminClaims() {
           { header: "Amount", value: (c) => c.claimAmount },
           { header: "Incident Date", value: (c) => c.incidentDate },
           { header: "Status", value: (c) => c.claimStatus },
-          { header: "Assigned Agent", value: (c) => c.assignedAgentName || "" },
+          { header: "Assigned Insurance Operations Officer", value: (c) => c.assignedAgentName || "" },
         ])}>Export CSV</button>
       </div>
 
-      {data?.content?.length === 0 ? (
+      {claims.length === 0 ? (
         <EmptyState message="No claims match this filter." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ops-table">
           <table className="data-table">
             <thead>
               <tr>
@@ -76,7 +87,7 @@ export default function AdminClaims() {
               </tr>
             </thead>
             <tbody>
-              {data?.content?.map((claim) => (
+              {claims.map((claim) => (
                 <tr key={claim.claimId}>
                   <td>{claim.claimNumber}</td>
                   <td>{claim.customerName}</td>

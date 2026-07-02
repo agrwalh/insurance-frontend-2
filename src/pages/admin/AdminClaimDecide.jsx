@@ -12,7 +12,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
 import { formatCurrency, formatDate, formatDateTime, formatLabel } from "../../utils/formatters";
 import { ADMIN_DECISION_OPTIONS } from "../../utils/constants";
-import { isBlank, extractErrorMessage } from "../../utils/validators";
+import { isBlank, isMeaningfulText, extractErrorMessage } from "../../utils/validators";
 
 const MIN_REMARKS_LENGTH = 15;
 
@@ -73,8 +73,8 @@ export default function AdminClaimDecide() {
     if (isBlank(remarks)) {
       setRemarksError("Remarks are required to justify the final decision");
       hasError = true;
-    } else if (remarks.trim().length < MIN_REMARKS_LENGTH) {
-      setRemarksError(`Please explain your reasoning in more detail (at least ${MIN_REMARKS_LENGTH} characters)`);
+    } else if (!isMeaningfulText(remarks, { minLength: MIN_REMARKS_LENGTH, minWords: 4, maxLength: 1000 })) {
+      setRemarksError("Please explain your final decision with at least 4 meaningful words");
       hasError = true;
     }
     if (hasError) return;
@@ -117,7 +117,7 @@ export default function AdminClaimDecide() {
             <div><dt>Claim Amount</dt><dd>{formatCurrency(claim.claimAmount)}</dd></div>
             <div><dt>Incident Date</dt><dd>{formatDate(claim.incidentDate)}</dd></div>
             <div><dt>Reason</dt><dd>{claim.claimReason}</dd></div>
-            {claim.agentRemarks && <div><dt>Agent Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
+            {claim.agentRemarks && <div><dt>Insurance Operations Officer Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
           </dl>
         </Card>
 
@@ -176,7 +176,7 @@ export default function AdminClaimDecide() {
         {finalized ? (
           <p className="form-section-hint">A final decision has already been made on this claim: <StatusBadge status={claim.claimStatus} /></p>
         ) : !readyForDecision ? (
-          <p className="form-section-hint">This claim hasn't been reviewed by an agent yet. Current status: <StatusBadge status={claim.claimStatus} /></p>
+          <p className="form-section-hint">This claim hasn't been reviewed by an insurance operations officer yet. Current status: <StatusBadge status={claim.claimStatus} /></p>
         ) : (
           <form onSubmit={handleDecisionSubmit} noValidate>
             <Select

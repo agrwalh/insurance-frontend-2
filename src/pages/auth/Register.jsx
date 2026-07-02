@@ -7,7 +7,7 @@ import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import { OTP_CHANNELS } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank, isValidEmail, isValidMobile, passwordStrength } from "../../utils/validators";
+import { isBlank, isValidEmail, isValidMobile, isValidPersonName, passwordStrength } from "../../utils/validators";
 
 const initialForm = { fullName: "", email: "", password: "", confirmPassword: "", mobileNumber: "", otpChannel: "" };
 
@@ -26,7 +26,8 @@ export default function Register() {
 
   const validate = () => {
     const errors = {};
-    if (isBlank(form.fullName) || form.fullName.trim().length < 2) errors.fullName = "Enter your full name";
+    if (isBlank(form.fullName)) errors.fullName = "Full name is required";
+    else if (!isValidPersonName(form.fullName)) errors.fullName = "Use a real name with letters, spaces, apostrophes or hyphens only";
     if (isBlank(form.email)) errors.email = "Email is required";
     else if (!isValidEmail(form.email)) errors.email = "Enter a valid email address";
     const s = passwordStrength(form.password);
@@ -72,14 +73,14 @@ export default function Register() {
         <Alert type="error" message={generalError} onClose={clearAll} />
 
         <form onSubmit={handleSubmit} noValidate>
-          <Input label="Full name" name="fullName" value={form.fullName} onChange={handleChange} error={fieldErrors.fullName} placeholder="Harsh Verma" maxLength={100} />
-          <Input label="Email address" name="email" type="email" value={form.email} onChange={handleChange} error={fieldErrors.email} placeholder="you@example.com" />
+          <Input label="Full name" name="fullName" value={form.fullName} onChange={handleChange} error={fieldErrors.fullName} placeholder="Harsh Verma" maxLength={100} required />
+          <Input label="Email address" name="email" type="email" value={form.email} onChange={handleChange} error={fieldErrors.email} placeholder="you@example.com" required />
           <div className="form-row">
-            <Input label="Password" name="password" type="password" value={form.password} onChange={handleChange} error={fieldErrors.password} placeholder="8+ chars, letter & number" />
-            <Input label="Confirm password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} error={fieldErrors.confirmPassword} placeholder="Repeat password" />
+            <Input label="Password" name="password" type="password" value={form.password} onChange={handleChange} error={fieldErrors.password} placeholder="Upper, lower, number & symbol" required />
+            <Input label="Confirm password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} error={fieldErrors.confirmPassword} placeholder="Repeat password" required />
           </div>
-          <Input label="Mobile number" name="mobileNumber" value={form.mobileNumber} onChange={handleChange} error={fieldErrors.mobileNumber} placeholder="9876543210" inputMode="numeric" maxLength={10} />
-          <Select label="Verify account via" name="otpChannel" value={form.otpChannel} onChange={handleChange} error={fieldErrors.otpChannel} options={OTP_CHANNELS} placeholder="Choose verification method" />
+          <Input label="Mobile number" name="mobileNumber" value={form.mobileNumber} onChange={handleChange} error={fieldErrors.mobileNumber} placeholder="9876543210" inputMode="numeric" maxLength={10} required />
+          <Select label="Verify account via" name="otpChannel" value={form.otpChannel} onChange={handleChange} error={fieldErrors.otpChannel} options={OTP_CHANNELS} placeholder="Choose verification method" required />
           <Button type="submit" fullWidth loading={loading}>Create account</Button>
         </form>
 

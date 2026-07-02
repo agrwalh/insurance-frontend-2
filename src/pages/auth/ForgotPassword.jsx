@@ -5,7 +5,7 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import Select from "../../components/common/Select";
-import { extractErrorMessage, isBlank, isValidEmail, passwordStrength } from "../../utils/validators";
+import { extractErrorMessage, isBlank, isValidEmail, isValidOtp, passwordStrength } from "../../utils/validators";
 
 const OTP_CHANNELS = [
   { value: "EMAIL", label: "Email" },
@@ -60,10 +60,11 @@ export default function ForgotPassword() {
     setError("");
     setSuccess("");
     const errors = {};
-    if (!/^\d{6}$/.test(form.otp)) errors.otp = "Enter 6-digit OTP";
+    if (!isValidOtp(form.otp)) errors.otp = "Enter a valid 6-digit OTP";
     const strength = passwordStrength(form.newPassword);
     if (!strength.valid) errors.newPassword = strength.message;
-    if (form.confirmPassword !== form.newPassword) errors.confirmPassword = "Passwords do not match";
+    if (isBlank(form.confirmPassword)) errors.confirmPassword = "Please confirm your new password";
+    else if (form.confirmPassword !== form.newPassword) errors.confirmPassword = "Passwords do not match";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -102,16 +103,16 @@ export default function ForgotPassword() {
 
         {step === 1 ? (
           <form onSubmit={requestOtp} noValidate>
-            <Input label="Email address" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} error={fieldErrors.email} placeholder="you@example.com" />
-            <Select label="Send OTP via" value={form.otpChannel} onChange={(e) => update("otpChannel", e.target.value)} error={fieldErrors.otpChannel} options={OTP_CHANNELS} />
+            <Input label="Email address" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} error={fieldErrors.email} placeholder="you@example.com" required />
+            <Select label="Send OTP via" value={form.otpChannel} onChange={(e) => update("otpChannel", e.target.value)} error={fieldErrors.otpChannel} options={OTP_CHANNELS} required />
             <Button type="submit" fullWidth loading={loading}>Send reset OTP</Button>
           </form>
         ) : (
           <form onSubmit={resetPassword} noValidate>
             <Input label="Email address" value={form.email} disabled />
-            <Input label="OTP" value={form.otp} onChange={(e) => update("otp", e.target.value.replace(/\D/g, "").slice(0, 6))} error={fieldErrors.otp} placeholder="123456" inputMode="numeric" maxLength={6} />
-            <Input label="New Password" type="password" value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} error={fieldErrors.newPassword} placeholder="New password" />
-            <Input label="Confirm Password" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} error={fieldErrors.confirmPassword} placeholder="Confirm new password" />
+            <Input label="OTP" value={form.otp} onChange={(e) => update("otp", e.target.value.replace(/\D/g, "").slice(0, 6))} error={fieldErrors.otp} placeholder="123456" inputMode="numeric" maxLength={6} required />
+            <Input label="New Password" type="password" value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} error={fieldErrors.newPassword} placeholder="Upper, lower, number & symbol" required />
+            <Input label="Confirm Password" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} error={fieldErrors.confirmPassword} placeholder="Confirm new password" required />
             <Button type="submit" fullWidth loading={loading}>Reset password</Button>
             <button type="button" className="link-btn" style={{ marginTop: "1rem" }} onClick={() => setStep(1)}>Change email / resend OTP</button>
           </form>

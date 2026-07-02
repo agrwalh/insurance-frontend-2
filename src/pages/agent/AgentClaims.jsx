@@ -28,26 +28,36 @@ export default function AgentClaims() {
 
   if (loading) return <Loader label="Loading claims..." />;
 
+  const claims = data?.content || [];
+  const reviewQueue = claims.filter((claim) => ["SUBMITTED", "UNDER_REVIEW"].includes(claim.claimStatus)).length;
+
   return (
-    <div>
-      <div className="page-header">
-        <h1>Review Claims</h1>
-        <p className="page-subtitle">Claims assigned to you by admin</p>
+    <div className="ops-page">
+      <div className="ops-hero claims-hero agent-claims-hero">
+        <div>
+          <span className="eyebrow">Officer Claim Queue</span>
+          <h1>Review Claims</h1>
+          <p>Work through assigned claims with quick filtering, evidence context, and review actions.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{reviewQueue}</strong>
+          <span>need review</span>
+          <p>{claims.length} assigned claims visible</p>
+        </div>
       </div>
 
       <Alert type="error" message={error} />
 
-      <div className="filter-bar">
-        <Select
-          name="status"
-          value={statusFilter}
-          onChange={handleFilterChange}
-          options={CLAIM_STATUSES}
-          placeholder="All statuses"
-        />
-      </div>
-
-      <div style={{ marginBottom: "1rem" }}>
+      <div className="ops-toolbar split-toolbar">
+        <div className="filter-bar">
+          <Select
+            name="status"
+            value={statusFilter}
+            onChange={handleFilterChange}
+            options={CLAIM_STATUSES}
+            placeholder="All statuses"
+          />
+        </div>
         <button className="btn btn-secondary" onClick={() => exportToCsv("assigned-claims", data?.content || [], [
           { header: "Claim No", value: (c) => c.claimNumber },
           { header: "Customer", value: (c) => c.customerName },
@@ -58,10 +68,10 @@ export default function AgentClaims() {
         ])}>Export CSV</button>
       </div>
 
-      {data?.content?.length === 0 ? (
+      {claims.length === 0 ? (
         <EmptyState message="No claims match this filter." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ops-table">
           <table className="data-table">
             <thead>
               <tr>
@@ -75,7 +85,7 @@ export default function AgentClaims() {
               </tr>
             </thead>
             <tbody>
-              {data?.content?.map((claim) => (
+              {claims.map((claim) => (
                 <tr key={claim.claimId}>
                   <td>{claim.claimNumber}</td>
                   <td>{claim.customerName}</td>

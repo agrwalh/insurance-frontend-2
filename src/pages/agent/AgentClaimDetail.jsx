@@ -12,7 +12,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
 import { formatCurrency, formatDate, formatDateTime, formatLabel } from "../../utils/formatters";
 import { AGENT_REVIEW_OPTIONS } from "../../utils/constants";
-import { isBlank, extractErrorMessage } from "../../utils/validators";
+import { isBlank, isMeaningfulText, extractErrorMessage } from "../../utils/validators";
 
 const MIN_REMARKS_LENGTH = 15;
 
@@ -67,7 +67,7 @@ export default function AgentClaimDetail() {
     try {
       await claimApi.review(claimId, {
         recommendedStatus: "UNDER_REVIEW",
-        remarks: "Claim taken under review by agent.",
+        remarks: "Claim taken under review by insurance operations officer.",
       });
       setSuccess("Claim moved to Under Review. You can now submit your recommendation.");
       loadAll();
@@ -92,8 +92,8 @@ export default function AgentClaimDetail() {
     if (isBlank(remarks)) {
       setRemarksError("Remarks are required to justify your recommendation");
       hasError = true;
-    } else if (remarks.trim().length < MIN_REMARKS_LENGTH) {
-      setRemarksError(`Please explain your reasoning in more detail (at least ${MIN_REMARKS_LENGTH} characters)`);
+    } else if (!isMeaningfulText(remarks, { minLength: MIN_REMARKS_LENGTH, minWords: 4, maxLength: 1000 })) {
+      setRemarksError("Please explain your recommendation with at least 4 meaningful words");
       hasError = true;
     }
     if (hasError) return;

@@ -12,7 +12,7 @@ import EmptyState from "../../components/common/EmptyState";
 import { formatCurrency, formatLabel } from "../../utils/formatters";
 import { PREMIUM_TYPES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank, isPositiveAmount, parseStrictNumber } from "../../utils/validators";
+import { isBlank, isMeaningfulText, isPositiveAmount, isValidPlanOrProductName, parseStrictNumber } from "../../utils/validators";
 import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyForm = {
@@ -71,8 +71,8 @@ export default function AdminPlans() {
 
     if (isBlank(form.planName)) {
       errors.planName = "Plan name is required";
-    } else if (form.planName.trim().length < 3) {
-      errors.planName = "Name must be at least 3 characters";
+    } else if (!isValidPlanOrProductName(form.planName)) {
+      errors.planName = "Use 3-150 valid letters/numbers and basic punctuation";
     }
 
     if (isBlank(form.coverageAmount)) {
@@ -111,8 +111,8 @@ export default function AdminPlans() {
 
     if (isBlank(form.termsAndConditions)) {
       errors.termsAndConditions = "Terms and conditions are required";
-    } else if (form.termsAndConditions.trim().length < 10) {
-      errors.termsAndConditions = "Please provide more detail (at least 10 characters)";
+    } else if (!isMeaningfulText(form.termsAndConditions, { minLength: 10, minWords: 3, maxLength: 2000 })) {
+      errors.termsAndConditions = "Please provide meaningful terms with at least 3 words";
     }
 
     return errors;
@@ -169,12 +169,25 @@ export default function AdminPlans() {
 
   if (loading) return <Loader label="Loading plans..." />;
 
+  const plans = data?.content || [];
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="catalog-page">
+      <div className="catalog-hero compact-admin-hero plans-admin-hero">
+        <div>
+          <span className="eyebrow">Plan Operations</span>
+          <h1>Plans</h1>
+          <p>Arrange coverage, premium, duration, and terms so customers can understand plans instantly.</p>
+        </div>
+        <div className="catalog-summary-grid">
+          <div><strong>{plans.length}</strong><span>Visible</span></div>
+          <div><strong>{products.length}</strong><span>Products</span></div>
+        </div>
+      </div>
+
+      <div className="page-header catalog-toolbar">
         <div className="page-header-row">
           <div>
-            <h1>Plans</h1>
             <p className="page-subtitle">Manage plans offered under each product</p>
           </div>
           <div className="modal-actions" style={{ marginTop: 0 }}>
@@ -194,16 +207,16 @@ export default function AdminPlans() {
       <Alert type="error" message={generalError || fetchError} onClose={() => clearAll()} />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      {data?.content?.length === 0 ? (
+      {plans.length === 0 ? (
         <EmptyState message="No plans yet. Create your first one." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap catalog-table">
           <table className="data-table">
             <thead>
               <tr><th>Plan</th><th>Product</th><th>Coverage</th><th>Premium</th><th>Duration</th><th></th></tr>
             </thead>
             <tbody>
-              {data?.content?.map((plan) => (
+              {plans.map((plan) => (
                 <tr key={plan.planId}>
                   <td>{plan.planName}</td>
                   <td>{plan.productName}</td>
@@ -227,6 +240,16 @@ export default function AdminPlans() {
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3>{editingId ? "Edit Plan" : "New Plan"}</h3>
+            {editingId && (
+              <div className="safety-warning-card">
+                <strong>Important pricing safeguard</strong>
+                <p>
+                  Premium, coverage, duration, and premium type changes should apply to future purchases only.
+                  Already issued policies must keep their original purchased values. If you need different pricing for
+                  customers, prefer creating a new plan version and deactivating the old one.
+                </p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} noValidate>
               <Select
                 label="Product"
@@ -281,7 +304,7 @@ export default function AdminPlans() {
                   placeholder="Select type"
                 />
                 <Input
-                  label="Duration (years)"
+                  label={form.premiumType === "ONE_TIME" ? "Coverage Validity (years)" : "Policy Duration (years)"}
                   name="durationYears"
                   type="number"
                   min="1"
@@ -290,6 +313,11 @@ export default function AdminPlans() {
                   value={form.durationYears}
                   onChange={handleChange}
                   error={fieldErrors.durationYears}
+                  helperText={
+                    form.premiumType === "ONE_TIME"
+                      ? "Customer pays once and coverage remains active for this validity period."
+                      : "Customer pays this premium every year during the selected policy term."
+                  }
                   placeholder="1"
                 />
               </div>

@@ -8,15 +8,15 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [showOfficerModal, setShowOfficerModal] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const talkToAgent = () => {
-    setShowAgentModal(true);
+  const talkToOfficer = () => {
+    setShowOfficerModal(true);
   };
 
   return (
@@ -42,16 +42,16 @@ export default function Navbar() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
 
-          {/* Talk to Agent */}
-          <button className="expert-talk" onClick={talkToAgent}>
-            📞 Talk to Agent
+          {/* Talk to Insurance Operations Officer */}
+          <button className="expert-talk" onClick={talkToOfficer}>
+            📞 Talk to Insurance Operations Officer
           </button>
 
           {user && (
             <>
               <div className="navbar-user">
                 <span className="user-name">{user.fullName}</span>
-                <span className="user-role">{user.role}</span>
+                <span className="user-role">{user.role === "AGENT" ? "Insurance Operations Officer" : user.role}</span>
               </div>
 
               <button className="logout-btn" onClick={handleLogout}>
@@ -62,11 +62,11 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Agent Modal */}
-      {showAgentModal && (
+      {/* Insurance Operations Officer Modal */}
+      {showOfficerModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowAgentModal(false)}
+          onClick={() => setShowOfficerModal(false)}
         >
           <div
             className="agent-modal"
@@ -89,7 +89,7 @@ export default function Navbar() {
 
               <button
                 className="close-btn"
-                onClick={() => setShowAgentModal(false)}
+                onClick={() => setShowOfficerModal(false)}
               >
                 Close
               </button>

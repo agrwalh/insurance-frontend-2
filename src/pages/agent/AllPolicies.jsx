@@ -134,12 +134,28 @@ export default function AllPolicies() {
 
   if (loading) return <Loader label="Loading policies..." />;
 
+  const policies = data?.content || [];
+  const activeCount = policies.filter((policy) => policy.status === "ACTIVE").length;
+  const pendingCount = policies.filter((policy) => policy.status === "PENDING_PAYMENT").length;
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="ops-page">
+      <div className="ops-hero policies-hero">
+        <div>
+          <span className="eyebrow">Policy Registry</span>
+          <h1>All Policies</h1>
+          <p>Monitor issued policies, premium readiness, customer ownership, and lifecycle status in one clean view.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{activeCount}</strong>
+          <span>active policies</span>
+          <p>{pendingCount} currently awaiting payment</p>
+        </div>
+      </div>
+
+      <div className="page-header ops-toolbar-header">
         <div className="page-header-row">
           <div>
-            <h1>All Policies</h1>
             <p className="page-subtitle">
               Every policy issued across all customers
             </p>
@@ -175,10 +191,10 @@ export default function AllPolicies() {
       />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      {data?.content?.length === 0 ? (
+      {policies.length === 0 ? (
         <EmptyState message="No policies found." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ops-table">
           <table className="data-table">
             <thead>
               <tr>
@@ -193,7 +209,7 @@ export default function AllPolicies() {
               </tr>
             </thead>
             <tbody>
-              {data?.content?.map((policy) => (
+              {policies.map((policy) => (
                 <tr key={policy.policyId}>
                   <td>{policy.policyNumber}</td>
                   <td>{policy.customerName}</td>
@@ -232,7 +248,7 @@ export default function AllPolicies() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3>Issue Policy to Customer</h3>
             <p className="form-section-hint">
-              Agent/Admin assisted issuance creates a policy in Pending Payment
+              Insurance Operations Officer/Admin assisted issuance creates a policy in Pending Payment
               state.
             </p>
             <form onSubmit={handleIssuePolicy} noValidate>

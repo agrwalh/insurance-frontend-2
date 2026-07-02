@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { planApi } from "../../api/planApi";
 import { policyApi } from "../../api/policyApi";
 import { useFetch } from "../../hooks/useFetch";
@@ -8,6 +8,11 @@ import Button from "../../components/common/Button";
 import Pagination from "../../components/common/Pagination";
 import EmptyState from "../../components/common/EmptyState";
 import { formatCurrency, formatLabel } from "../../utils/formatters";
+import {
+  ACTIVE_LIKE_POLICY_STATUSES,
+  MAX_PENDING_PAYMENT_POLICIES,
+  PRODUCT_POLICY_LIMITS,
+} from "../../utils/constants";
 import {
   isBlank,
   isFutureOrToday,
@@ -41,12 +46,102 @@ export default function BrowsePlans() {
   const [dateError, setDateError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [myPolicies, setMyPolicies] = useState([]);
+  const [policiesLoading, setPoliciesLoading] = useState(true);
 
   const {
     data,
     loading,
     error: fetchError,
   } = useFetch(() => planApi.getActive({ page, size: 9 }), [page]);
+
+  useEffect(() => {
+    let ignore = false;
+    setPoliciesLoading(true);
+
+    policyApi
+      .getMyPolicies({ page: 0, size: 100 })
+      .then((res) => {
+        if (!ignore) setMyPolicies(res.data.data.content || []);
+      })
+      .catch(() => {
+        if (!ignore) {
+          setError("Could not verify your existing policies. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) setPoliciesLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const activeLikePolicies = useMemo(
+    () =>
+      myPolicies.filter((policy) =>
+        ACTIVE_LIKE_POLICY_STATUSES.includes(policy.status),
+      ),
+    [myPolicies],
+  );
+
+  const pendingPaymentCount = useMemo(
+    () =>
+      myPolicies.filter((policy) => policy.status === "PENDING_PAYMENT").length,
+    [myPolicies],
+  );
+
+  const getPlanEligibility = (plan) => {
+    if (policiesLoading) {
+      return {
+        allowed: false,
+        reason: "Checking your existing policies...",
+        tone: "neutral",
+      };
+    }
+
+    const duplicatePlan = activeLikePolicies.find(
+      (policy) => String(policy.planId) === String(plan.planId),
+    );
+
+    if (duplicatePlan) {
+      return {
+        allowed: false,
+        reason: `You already have this plan ${duplicatePlan.status === "ACTIVE" ? "active" : "awaiting payment"}.`,
+        tone: "blocked",
+      };
+    }
+
+    if (pendingPaymentCount >= MAX_PENDING_PAYMENT_POLICIES) {
+      return {
+        allowed: false,
+        reason: `You already have ${pendingPaymentCount} pending payments. Complete them before buying another plan.`,
+        tone: "blocked",
+      };
+    }
+
+    const productLimit = PRODUCT_POLICY_LIMITS[plan.productType];
+    if (productLimit) {
+      const sameProductCount = activeLikePolicies.filter(
+        (policy) => policy.productType === plan.productType,
+      ).length;
+
+      if (sameProductCount >= productLimit) {
+        return {
+          allowed: false,
+          reason: `Standard customers can keep up to ${productLimit} active/pending ${formatLabel(plan.productType)} ${productLimit === 1 ? "policy" : "policies"}. Contact support for additional coverage.`,
+          tone: "blocked",
+        };
+      }
+    }
+
+    return {
+      allowed: true,
+      reason: "Eligible for purchase under standard customer limits.",
+      tone: "allowed",
+    };
+  };
 
   const handleDateChange = (e) => {
     setStartDate(e.target.value);
@@ -69,12 +164,27 @@ export default function BrowsePlans() {
       setDateError(msg);
       return;
     }
+
+    const plan = data?.content?.find((item) => String(item.planId) === String(planId));
+    if (!plan) {
+      setError("Could not verify this plan. Please refresh and try again.");
+      return;
+    }
+
+    const eligibility = getPlanEligibility(plan);
+    if (!eligibility.allowed) {
+      setError(eligibility.reason);
+      return;
+    }
+
     setPurchasingId(planId);
     try {
       await policyApi.purchase({ planId, startDate });
       setSuccess(
         "Policy purchased successfully! Go to My Policies to complete payment.",
       );
+      const policiesRes = await policyApi.getMyPolicies({ page: 0, size: 100 });
+      setMyPolicies(policiesRes.data.data.content || []);
     } catch (err) {
       setError(extractErrorMessage(err, "Could not purchase this plan."));
     } finally {
@@ -85,15 +195,19 @@ export default function BrowsePlans() {
   if (loading) return <Loader label="Loading plans..." />;
 
   return (
-    <div>
-      <div className="page-header">
-        <div className="page-header-row">
-          <div>
-            <h1>Insurance Plans</h1>
-            <p className="page-subtitle">
-              Choose the plan that best fits your needs
-            </p>
-          </div>
+    <div className="marketplace-page">
+      <div className="marketplace-hero">
+        <div>
+          <span className="eyebrow">Plan Marketplace</span>
+          <h1>Choose protection that feels simple, clear, and trustworthy.</h1>
+          <p>
+            Compare coverage, premium style, eligibility, and policy duration before you buy. No confusing steps — just select a start date and choose the right plan.
+          </p>
+        </div>
+        <div className="marketplace-trust-card">
+          <strong>{data?.totalElements ?? data?.content?.length ?? 0}</strong>
+          <span>available plans</span>
+          <p>Eligibility is checked against your existing policies before purchase.</p>
         </div>
       </div>
 
@@ -104,31 +218,11 @@ export default function BrowsePlans() {
       />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      <div
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--r)",
-          padding: "1rem 1.25rem",
-          marginBottom: "1.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "1.25rem",
-          flexWrap: "wrap",
-          boxShadow: "var(--sh-1)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ fontSize: "1.1rem" }}>📅</span>
-          <span
-            style={{
-              fontSize: "0.88rem",
-              fontWeight: 600,
-              color: "var(--slate-700)",
-            }}
-          >
-            Policy Start Date
-          </span>
+      <div className="purchase-step-card">
+        <div className="step-badge">1</div>
+        <div className="purchase-step-copy">
+          <h3>Pick your policy start date</h3>
+          <p>Plans can start from today up to one year ahead.</p>
         </div>
         <div>
           <input
@@ -138,13 +232,9 @@ export default function BrowsePlans() {
             min={TODAY_STR}
             max={MAX_START}
             onChange={handleDateChange}
-            style={{ width: "auto", minWidth: "180px" }}
           />
           {dateError && <span className="field-error">{dateError}</span>}
         </div>
-        <span style={{ fontSize: "0.82rem", color: "var(--text-3)" }}>
-          Set a start date, then click Purchase on any plan below
-        </span>
       </div>
 
       {data?.content?.length === 0 ? (
@@ -153,6 +243,7 @@ export default function BrowsePlans() {
         <div className="plan-grid">
           {data?.content?.map((plan) => {
             const imgUrl = PLAN_IMAGES[plan.productType] || PLAN_IMAGES.DEFAULT;
+            const eligibility = getPlanEligibility(plan);
             return (
               <div key={plan.planId} className="plan-card">
                 {/* Photographic top strip */}
@@ -165,9 +256,14 @@ export default function BrowsePlans() {
                   </span>
                 </div>
 
-                <div className="plan-card-body">
-                  <p className="plan-card-name">{plan.planName}</p>
-                  <p className="plan-card-product">{plan.productName}</p>
+                <div className="plan-card-body enhanced-plan-body">
+                  <div className="plan-card-title-row">
+                    <div>
+                      <p className="plan-card-name">{plan.planName}</p>
+                      <p className="plan-card-product">{plan.productName}</p>
+                    </div>
+                    <span className="plan-score-pill">Popular</span>
+                  </div>
 
                   <div className="plan-figures">
                     <div>
@@ -192,14 +288,25 @@ export default function BrowsePlans() {
                     &nbsp;·&nbsp;
                     {plan.durationYears} year{plan.durationYears > 1 ? "s" : ""}
                   </p>
+                  <div className="plan-benefit-list">
+                    <span>✓ Cashless-ready digital purchase</span>
+                    <span>✓ Transparent premium and duration</span>
+                    <span>✓ Eligibility checked instantly</span>
+                  </div>
                   <p className="plan-terms">{plan.termsAndConditions}</p>
+
+                  <p className={`eligibility-note eligibility-${eligibility.tone}`}>
+                    {eligibility.tone === "blocked" ? "⚠️ " : "✅ "}
+                    {eligibility.reason}
+                  </p>
 
                   <Button
                     fullWidth
                     loading={purchasingId === plan.planId}
+                    disabled={!eligibility.allowed || policiesLoading}
                     onClick={() => handlePurchase(plan.planId)}
                   >
-                    Purchase Plan
+                    {eligibility.allowed ? "Purchase Plan" : "Not Eligible"}
                   </Button>
                 </div>
               </div>

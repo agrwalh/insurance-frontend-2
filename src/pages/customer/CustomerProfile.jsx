@@ -6,9 +6,11 @@ import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import Card from "../../components/common/Card";
 import Loader from "../../components/common/Loader";
+import { useAuth } from "../../hooks/useAuth";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { NOMINEE_RELATIONS } from "../../utils/constants";
-import { isBlank, isValidPinCode, isAtLeast18YearsOld, isRealisticDob, isPastOrToday } from "../../utils/validators";
+import { INDIAN_STATES, NOMINEE_RELATIONS } from "../../utils/constants";
+import { formatLabel } from "../../utils/formatters";
+import { isBlank, isValidPinCode, isAtLeast18YearsOld, isRealisticDob, isPastOrToday, isValidCityOrState, isValidPersonName, isMeaningfulText } from "../../utils/validators";
 
 const emptyForm = {
   dateOfBirth: "", address: "", city: "", state: "", pinCode: "", nomineeName: "", nomineeRelation: "",
@@ -17,6 +19,7 @@ const emptyForm = {
 const TODAY = new Date().toISOString().split("T")[0];
 
 export default function CustomerProfile() {
+  const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,12 +78,14 @@ export default function CustomerProfile() {
 
     if (isBlank(form.address)) {
       errors.address = "Address is required";
-    } else if (form.address.trim().length < 5) {
-      errors.address = "Address seems too short";
+    } else if (!isMeaningfulText(form.address, { minLength: 8, minWords: 2, maxLength: 250 })) {
+      errors.address = "Enter a complete address with meaningful words";
     }
 
     if (isBlank(form.city)) errors.city = "City is required";
+    else if (!isValidCityOrState(form.city)) errors.city = "Enter a valid city name";
     if (isBlank(form.state)) errors.state = "State is required";
+    else if (!isValidCityOrState(form.state)) errors.state = "Enter a valid state name";
 
     if (isBlank(form.pinCode)) {
       errors.pinCode = "PIN code is required";
@@ -90,8 +95,8 @@ export default function CustomerProfile() {
 
     if (isBlank(form.nomineeName)) {
       errors.nomineeName = "Nominee name is required";
-    } else if (form.nomineeName.trim().length < 2) {
-      errors.nomineeName = "Nominee name seems too short";
+    } else if (!isValidPersonName(form.nomineeName)) {
+      errors.nomineeName = "Enter a valid nominee name";
     }
 
     if (isBlank(form.nomineeRelation)) errors.nomineeRelation = "Nominee relation is required";
@@ -138,20 +143,75 @@ export default function CustomerProfile() {
 
   if (loading) return <Loader label="Loading your profile..." />;
 
+  const completedFields = Object.values(form).filter((value) => !isBlank(value)).length;
+  const completion = Math.round((completedFields / Object.keys(emptyForm).length) * 100);
+  const age = form.dateOfBirth
+    ? Math.max(0, new Date().getFullYear() - new Date(form.dateOfBirth).getFullYear())
+    : null;
+  const readinessItems = [
+    { label: "Personal age verification", done: !isBlank(form.dateOfBirth) && !fieldErrors.dateOfBirth },
+    { label: "Serviceable address", done: !isBlank(form.address) && !isBlank(form.city) && !isBlank(form.state) && !isBlank(form.pinCode) },
+    { label: "Nominee details", done: !isBlank(form.nomineeName) && !isBlank(form.nomineeRelation) },
+    { label: "Account identity", done: Boolean(user?.fullName && user?.email) },
+  ];
+
   return (
-    <div>
-      <div className="page-header">
-        <h1>My Profile</h1>
-        <p className="page-subtitle">
-          {hasProfile ? "Update your details below" : "Complete your profile to start buying policies"}
-        </p>
+    <div className="profile-page">
+      <div className="profile-hero-card">
+        <div>
+          <span className="eyebrow">Customer Identity</span>
+          <h1>{hasProfile ? "Keep your profile claim-ready." : "Complete your profile to unlock buying."}</h1>
+          <p>Accurate personal, address, and nominee details make policy purchase, claims, and support smoother.</p>
+        </div>
+        <div className="profile-completion-card">
+          <span>Profile Completion</span>
+          <strong>{completion}%</strong>
+          <div className="profile-progress"><span style={{ width: `${completion}%` }} /></div>
+        </div>
       </div>
 
-      <Card>
-        <Alert type="error" message={generalError} onClose={() => clearAll()} />
-        <Alert type="success" message={success} onClose={() => setSuccess("")} />
+      <div className="profile-layout-grid">
+        <aside className="profile-guidance-card">
+          <div className="profile-avatar-card">
+            <div className="profile-avatar">{user?.fullName?.charAt(0)?.toUpperCase() || "C"}</div>
+            <div>
+              <h3>{user?.fullName || "Customer"}</h3>
+              <p>{user?.email || "Email not available"}</p>
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} noValidate>
+          <dl className="profile-summary-list">
+            <div><dt>Role</dt><dd>{formatLabel(user?.role || "CUSTOMER")}</dd></div>
+            <div><dt>Account Status</dt><dd>Active</dd></div>
+            <div><dt>Calculated Age</dt><dd>{age ? `${age} years` : "Add DOB"}</dd></div>
+            <div><dt>KYC Readiness</dt><dd>{completion === 100 ? "Complete" : "In Progress"}</dd></div>
+          </dl>
+
+          <h3>Why this matters</h3>
+          <ul>
+            <li>Nominee details keep benefits clear for your family.</li>
+            <li>Address and PIN help verify service availability.</li>
+            <li>Date of birth confirms eligibility and policy rules.</li>
+          </ul>
+
+          <div className="readiness-checklist">
+            <h3>Insurance readiness</h3>
+            {readinessItems.map((item) => (
+              <div key={item.label} className={item.done ? "ready-item done" : "ready-item"}>
+                <span>{item.done ? "✓" : "○"}</span>
+                {item.label}
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <Card title="Profile details">
+          <Alert type="error" message={generalError} onClose={() => clearAll()} />
+          <Alert type="success" message={success} onClose={() => setSuccess("")} />
+
+          <form onSubmit={handleSubmit} noValidate>
+          <h3 className="form-section-title">Personal verification</h3>
+          <p className="form-section-hint">Use details exactly as you want them reflected on policies.</p>
           <div className="form-row">
             <Input
               label="Date of Birth"
@@ -174,6 +234,8 @@ export default function CustomerProfile() {
             />
           </div>
 
+          <h3 className="form-section-title">Communication address</h3>
+          <p className="form-section-hint">This helps support and policy servicing teams identify your location.</p>
           <Input
             label="Address"
             name="address"
@@ -186,9 +248,19 @@ export default function CustomerProfile() {
 
           <div className="form-row">
             <Input label="City" name="city" value={form.city} onChange={handleChange} error={fieldErrors.city} placeholder="Lucknow" maxLength={100} />
-            <Input label="State" name="state" value={form.state} onChange={handleChange} error={fieldErrors.state} placeholder="Uttar Pradesh" maxLength={100} />
+            <Select
+              label="State / Union Territory"
+              name="state"
+              value={form.state}
+              onChange={handleChange}
+              error={fieldErrors.state}
+              options={INDIAN_STATES}
+              placeholder="Select state"
+            />
           </div>
 
+          <h3 className="form-section-title">Nominee information</h3>
+          <p className="form-section-hint">Add the person who should be contacted for policy benefits if needed.</p>
           <div className="form-row">
             <Input
               label="Nominee Name"
@@ -213,8 +285,9 @@ export default function CustomerProfile() {
           <Button type="submit" loading={saving}>
             {hasProfile ? "Save Changes" : "Create Profile"}
           </Button>
-        </form>
-      </Card>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

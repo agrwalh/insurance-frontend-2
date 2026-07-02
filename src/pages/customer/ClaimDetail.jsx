@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { claimApi } from "../../api/claimApi";
 import { documentApi } from "../../api/documentApi";
+import { settlementApi } from "../../api/settlementApi";
 import DocumentDropzone from "../../components/common/DocumentDropzone";
 import Card from "../../components/common/Card";
 import Loader from "../../components/common/Loader";
@@ -23,6 +24,7 @@ export default function ClaimDetail() {
   const [claim, setClaim] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [history, setHistory] = useState([]);
+  const [settlement, setSettlement] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(
@@ -43,14 +45,18 @@ export default function ClaimDetail() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [claimRes, docsRes, historyRes] = await Promise.all([
+      const [claimRes, docsRes, historyRes, settlementRes] = await Promise.allSettled([
         claimApi.getById(claimId),
         documentApi.getByClaim(claimId),
         claimApi.getHistory(claimId, { page: 0, size: 50 }),
+        settlementApi.getByClaim(claimId),
       ]);
-      setClaim(claimRes.data.data);
-      setDocuments(docsRes.data.data);
-      setHistory(historyRes.data.data.content);
+
+      if (claimRes.status !== "fulfilled") throw claimRes.reason;
+      setClaim(claimRes.value.data.data);
+      setDocuments(docsRes.status === "fulfilled" ? docsRes.value.data.data : []);
+      setHistory(historyRes.status === "fulfilled" ? historyRes.value.data.data.content : []);
+      setSettlement(settlementRes.status === "fulfilled" ? settlementRes.value.data.data : null);
     } catch (err) {
       setError("Could not load claim details.");
     } finally {
@@ -111,6 +117,10 @@ export default function ClaimDetail() {
   };
 
   const handleDeleteDocument = async (documentId, documentName) => {
+    if (!documentId) {
+      setError("Could not identify this document for deletion. Please refresh and try again.");
+      return;
+    }
     if (!window.confirm(`Delete "${documentName}"? This cannot be undone.`)) return;
 
     setError("");
@@ -147,10 +157,38 @@ export default function ClaimDetail() {
             <div><dt>Claim Amount</dt><dd>{formatCurrency(claim.claimAmount)}</dd></div>
             <div><dt>Incident Date</dt><dd>{formatDate(claim.incidentDate)}</dd></div>
             <div><dt>Reason</dt><dd>{claim.claimReason}</dd></div>
-            {claim.agentRemarks && <div><dt>Agent Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
+            {claim.agentRemarks && <div><dt>Insurance Operations Officer Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
             {claim.adminRemarks && <div><dt>Admin Remarks</dt><dd>{claim.adminRemarks}</dd></div>}
             <div><dt>Submitted</dt><dd>{formatDateTime(claim.createdAt)}</dd></div>
           </dl>
+        </Card>
+
+        <Card title="Settlement Details">
+          {settlement ? (
+            <dl className="detail-list">
+              <div><dt>Settlement Number</dt><dd>{settlement.settlementNumber || "—"}</dd></div>
+              <div><dt>Status</dt><dd><StatusBadge status={settlement.settlementStatus} /></dd></div>
+              <div><dt>Approved Amount</dt><dd>{formatCurrency(settlement.approvedAmount)}</dd></div>
+              <div><dt>Payment Reference</dt><dd>{settlement.paymentReference || "Pending"}</dd></div>
+              <div><dt>Initiated</dt><dd>{formatDateTime(settlement.createdAt || settlement.initiatedAt)}</dd></div>
+              <div><dt>Paid / Updated</dt><dd>{formatDateTime(settlement.paidAt || settlement.updatedAt)}</dd></div>
+            </dl>
+          ) : claim.claimStatus === "APPROVED" ? (
+            <div className="settlement-empty-card">
+              <strong>Approved — settlement pending</strong>
+              <p>Your claim is approved. Settlement details will appear here once admin initiates payout.</p>
+            </div>
+          ) : claim.claimStatus === "REJECTED" ? (
+            <div className="settlement-empty-card rejected">
+              <strong>No settlement applicable</strong>
+              <p>This claim was rejected, so no settlement payout will be generated.</p>
+            </div>
+          ) : (
+            <div className="settlement-empty-card">
+              <strong>Settlement not available yet</strong>
+              <p>Settlement details become available after claim approval and payout initiation.</p>
+            </div>
+          )}
         </Card>
 
         <Card title="Status History">
@@ -178,28 +216,35 @@ export default function ClaimDetail() {
           <EmptyState message="No documents uploaded yet." />
         ) : (
           <ul className="document-list">
-            {documents.map((doc) => (
-              <li key={doc.documentId} className="document-item">
+            {documents.map((doc) => {
+              const docId = doc.documentId || doc.id;
+              return (
+              <li key={docId || doc.documentUrl || doc.documentName} className="document-item">
                 <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer">{doc.documentName}</a>
                 <span className="document-meta">{formatLabel(doc.documentType)} · {doc.fileSizeReadable}</span>
                 {canManageDocuments && (
                   <button
+                    type="button"
                     className="link-btn link-btn-danger"
-                    disabled={deletingId === doc.documentId}
-                    onClick={() => handleDeleteDocument(doc.documentId, doc.documentName)}
+                    disabled={deletingId === docId}
+                    onClick={() => handleDeleteDocument(docId, doc.documentName)}
                   >
-                    {deletingId === doc.documentId ? "Deleting..." : "Delete"}
+                    {deletingId === docId ? "Deleting..." : "Delete"}
                   </button>
                 )}
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
 
         {canManageDocuments ? (
           <>
             <hr className="form-divider" />
-            <h4 className="form-section-title">Upload New Document</h4>
+            <h4 className="form-section-title">Upload Supporting File</h4>
+            <p className="form-section-hint">
+              Upload the actual file for your bill, report, photo, or other proof. You can remove uploaded files while the claim is still submitted or under review.
+            </p>
 
             <form onSubmit={handleUpload} noValidate>
               <div className="form-row">

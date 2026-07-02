@@ -15,10 +15,10 @@ import { extractErrorMessage } from "../../utils/validators";
 
 export default function AdminBusinessTools() {
   const [claims, setClaims] = useState([]);
-  const [agents, setAgents] = useState([]);
+  const [officers, setOfficers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [claimId, setClaimId] = useState("");
-  const [agentId, setAgentId] = useState("");
+  const [officerId, setOfficerId] = useState("");
   const [risk, setRisk] = useState(null);
   const [settlement, setSettlement] = useState(null);
   const [approvedAmount, setApprovedAmount] = useState("");
@@ -38,7 +38,7 @@ export default function AdminBusinessTools() {
         auditApi.getAll({ page: 0, size: 20, sortBy: "createdAt", direction: "desc" }),
       ]);
       setClaims(claimsRes.data.data.content || []);
-      setAgents((usersRes.data.data.content || []).filter((u) => u.role === "AGENT" && u.isActive));
+      setOfficers((usersRes.data.data.content || []).filter((u) => u.role === "AGENT" && u.isActive));
       setAuditLogs(auditRes.data.data.content || []);
     } catch (err) {
       setError(extractErrorMessage(err, "Could not load business tools data."));
@@ -66,8 +66,8 @@ export default function AdminBusinessTools() {
   };
 
   const handleAssign = () => {
-    if (!claimId || !agentId) return setError("Select claim and agent first.");
-    runAction(() => claimApi.assign(claimId, agentId), "Claim assigned successfully.");
+    if (!claimId || !officerId) return setError("Select claim and insurance operations officer first.");
+    runAction(() => claimApi.assign(claimId, officerId), "Claim assigned successfully.");
   };
 
   const handleRisk = async () => {
@@ -101,22 +101,30 @@ export default function AdminBusinessTools() {
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <h1>Business Tools</h1>
-        <p className="page-subtitle">Verify assignment, risk assessment, settlement and audit logs</p>
+    <div className="ops-page">
+      <div className="ops-hero business-tools-hero">
+        <div>
+          <span className="eyebrow">Admin Command Center</span>
+          <h1>Business Tools</h1>
+          <p>Assign claims, assess risk, manage settlements, and review audit trails from one focused workspace.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{claims.filter((c) => !c.assignedAgentName).length}</strong>
+          <span>unassigned claims</span>
+          <p>Keep operational work moving with quick assignment and settlement actions.</p>
+        </div>
       </div>
 
-      <div className="business-metric-grid">
-        <div className="business-metric">
+      <div className="business-metric-grid ops-metric-grid">
+        <div className="business-metric ops-metric">
           <span>Total Claims</span>
           <strong>{claims.length}</strong>
         </div>
-        <div className="business-metric">
-          <span>Active Agents</span>
-          <strong>{agents.length}</strong>
+        <div className="business-metric ops-metric">
+          <span>Active Insurance Operations Officers</span>
+          <strong>{officers.length}</strong>
         </div>
-        <div className="business-metric">
+        <div className="business-metric ops-metric">
           <span>Audit Events</span>
           <strong>{auditLogs.length}</strong>
         </div>
@@ -125,7 +133,7 @@ export default function AdminBusinessTools() {
       <Alert type="error" message={error} onClose={() => setError("")} />
       <Alert type="success" message={message} onClose={() => setMessage("")} />
 
-      <div className="detail-grid">
+      <div className="detail-grid ops-card-grid">
         <Card title="Claim Assignment & Risk">
           <Select
             label="Claim"
@@ -141,18 +149,18 @@ export default function AdminBusinessTools() {
             </p>
           )}
           <Select
-            label="Agent"
-            value={agentId}
-            onChange={(e) => setAgentId(e.target.value)}
-            placeholder="Select active agent"
-            options={agents.map((a) => ({ value: a.userId, label: `${a.fullName} (${a.email})` }))}
+            label="Insurance Operations Officer"
+            value={officerId}
+            onChange={(e) => setOfficerId(e.target.value)}
+            placeholder="Select active insurance operations officer"
+            options={officers.map((a) => ({ value: a.userId, label: `${a.fullName} (${a.email})` }))}
           />
           <div className="modal-actions">
             <Button onClick={handleAssign} loading={loading}>Assign Claim</Button>
             <Button type="button" variant="secondary" onClick={handleRisk} loading={loading}>Check Risk</Button>
           </div>
           {risk && (
-            <div style={{ marginTop: "1rem" }}>
+            <div className="risk-result-card">
               <h4>Risk: {risk.riskLevel} ({risk.riskScore}/100)</h4>
               <ul>{risk.reasons?.map((r) => <li key={r}>{r}</li>)}</ul>
             </div>
@@ -167,7 +175,7 @@ export default function AdminBusinessTools() {
           </div>
 
           {settlement && (
-            <div style={{ marginTop: "1rem" }}>
+            <div className="settlement-result-card">
               <p><strong>{settlement.settlementNumber}</strong> · {settlement.settlementStatus}</p>
               <p>Approved: {formatCurrency(settlement.approvedAmount)}</p>
               {settlement.paymentReference && <p>Payment Ref: {settlement.paymentReference}</p>}

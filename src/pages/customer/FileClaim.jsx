@@ -15,6 +15,8 @@ import {
   isPositiveAmount,
   parseStrictNumber,
   isPastOrToday,
+  isMeaningfulText,
+  isValidDocumentReference,
   toDateOnly,
 } from "../../utils/validators";
 
@@ -73,6 +75,15 @@ export default function FileClaim() {
     setDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const clearDocumentRow = (index) => {
+    setDocuments((prev) => {
+      const next = [...prev];
+      next[index] = { ...emptyDocument };
+      return next;
+    });
+    clearFieldError("documents");
+  };
+
   const validate = () => {
     const errors = {};
 
@@ -106,10 +117,8 @@ export default function FileClaim() {
 
     if (isBlank(form.claimReason)) {
       errors.claimReason = "Please describe what happened";
-    } else if (form.claimReason.trim().length < 20) {
-      errors.claimReason = "Please provide more detail (at least 20 characters)";
-    } else if (form.claimReason.length > 2000) {
-      errors.claimReason = "Reason is too long (max 2000 characters)";
+    } else if (!isMeaningfulText(form.claimReason, { minLength: 20, minWords: 5, maxLength: 2000 })) {
+      errors.claimReason = "Please describe the incident clearly with at least 5 meaningful words";
     }
 
     const validDocuments = documents.filter((d) => !isBlank(d.documentName) || !isBlank(d.documentType) || !isBlank(d.documentReference));
@@ -120,6 +129,8 @@ export default function FileClaim() {
       const incomplete = validDocuments.some((d) => isBlank(d.documentName) || isBlank(d.documentType) || isBlank(d.documentReference));
       if (incomplete) {
         errors.documents = "Each document row needs a name, type, and reference - remove any unfinished rows";
+      } else if (validDocuments.some((d) => !isMeaningfulText(d.documentName, { minLength: 3, minWords: 1, maxLength: 150 }) || !isValidDocumentReference(d.documentReference))) {
+        errors.documents = "Document names and references must be valid, meaningful, and free from unsafe symbols";
       }
     }
 
@@ -230,9 +241,9 @@ export default function FileClaim() {
           </div>
 
           <hr className="form-divider" />
-          <h3 className="form-section-title">Supporting Documents</h3>
+          <h3 className="form-section-title">Supporting Document Checklist</h3>
           <p className="form-section-hint">
-            Describe each document you have. You'll upload the actual files in the next step.
+            Add the documents you plan to submit for this claim. After the claim is created, you will upload the actual files on the next screen.
           </p>
           {fieldErrors.documents && <Alert type="error" message={fieldErrors.documents} onClose={() => clearFieldError("documents")} />}
 
@@ -259,11 +270,15 @@ export default function FileClaim() {
                 placeholder="e.g. Invoice #1234"
                 maxLength={150}
               />
-              {documents.length > 1 && (
-                <button type="button" className="remove-row-btn" onClick={() => removeDocumentRow(index)} aria-label="Remove document">
-                  ×
-                </button>
-              )}
+              <button
+                type="button"
+                className="remove-row-btn"
+                onClick={() => documents.length > 1 ? removeDocumentRow(index) : clearDocumentRow(index)}
+                aria-label={documents.length > 1 ? "Remove document" : "Clear document row"}
+                title={documents.length > 1 ? "Remove this document row" : "Clear this document row"}
+              >
+                ×
+              </button>
             </div>
           ))}
 
@@ -276,8 +291,11 @@ export default function FileClaim() {
           )}
 
           <div style={{ marginTop: "1.5rem" }}>
+            <p className="field-hint" style={{ marginBottom: "0.75rem" }}>
+              Next step: upload files like PDF, JPG, or PNG after this claim number is generated.
+            </p>
             <Button type="submit" loading={loading} disabled={policies.length === 0}>
-              Submit Claim
+              Submit Claim & Continue to Upload
             </Button>
           </div>
         </form>

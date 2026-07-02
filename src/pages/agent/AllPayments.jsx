@@ -16,16 +16,27 @@ export default function AllPayments() {
 
   if (loading) return <Loader label="Loading payments..." />;
 
+  const payments = data?.content || [];
+  const totalAmount = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
   return (
-    <div>
-      <div className="page-header">
-        <h1>All Payments</h1>
-        <p className="page-subtitle">Payment records across all policies</p>
+    <div className="ops-page">
+      <div className="ops-hero payments-hero">
+        <div>
+          <span className="eyebrow">Payment Ledger</span>
+          <h1>All Payments</h1>
+          <p>Track premium collections, references, payment modes, and confirmation status across policies.</p>
+        </div>
+        <div className="ops-hero-panel">
+          <strong>{formatCurrency(totalAmount)}</strong>
+          <span>visible payment volume</span>
+          <p>{payments.length} records on this page</p>
+        </div>
       </div>
 
       <Alert type="error" message={error} />
 
-      <div style={{ marginBottom: "1rem" }}>
+      <div className="ops-toolbar">
         <button className="btn btn-secondary" onClick={() => exportToCsv("payments", data?.content || [], [
           { header: "Policy", value: (p) => p.policyNumber },
           { header: "Amount", value: (p) => p.amount },
@@ -36,10 +47,10 @@ export default function AllPayments() {
         ])}>Export CSV</button>
       </div>
 
-      {data?.content?.length === 0 ? (
+      {payments.length === 0 ? (
         <EmptyState message="No payments recorded yet." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap ops-table">
           <table className="data-table">
             <thead>
               <tr>
@@ -52,7 +63,7 @@ export default function AllPayments() {
               </tr>
             </thead>
             <tbody>
-              {data?.content?.map((payment) => (
+              {payments.map((payment) => (
                 <tr key={payment.paymentId}>
                   <td>{payment.policyNumber}</td>
                   <td>{formatCurrency(payment.amount)}</td>

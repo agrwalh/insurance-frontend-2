@@ -3,6 +3,12 @@ import { getApiErrorMessage } from "./apiResponse";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const PIN_CODE_REGEX = /^[1-9][0-9]{5}$/;
+const PERSON_NAME_REGEX = /^[A-Za-z][A-Za-z .'-]{1,98}[A-Za-z]$/;
+const CITY_STATE_REGEX = /^[A-Za-z][A-Za-z .'-]{1,98}[A-Za-z]$/;
+const PLAN_PRODUCT_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9 .,&()+'-]{2,148}$/;
+const TRANSACTION_REF_REGEX = /^[A-Za-z0-9][A-Za-z0-9_/-]{5,49}$/;
+const DOCUMENT_REF_REGEX = /^[A-Za-z0-9][A-Za-z0-9 .#_:/-]{2,149}$/;
+const OTP_REGEX = /^\d{6}$/;
 
 export function isValidEmail(value) {
   return EMAIL_REGEX.test(String(value || "").trim());
@@ -14,6 +20,51 @@ export function isValidMobile(value) {
 
 export function isValidPinCode(value) {
   return PIN_CODE_REGEX.test(String(value || "").trim());
+}
+
+export function hasRepeatedCharactersOnly(value) {
+  const normalized = String(value || "").trim().replace(/\s+/g, "");
+  return normalized.length >= 3 && /^(.)\1+$/.test(normalized);
+}
+
+export function hasMinimumWords(value, minWords = 2) {
+  return String(value || "").trim().split(/\s+/).filter(Boolean).length >= minWords;
+}
+
+export function isValidPersonName(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  return PERSON_NAME_REGEX.test(text) && !hasRepeatedCharactersOnly(text);
+}
+
+export function isValidCityOrState(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  return CITY_STATE_REGEX.test(text) && !hasRepeatedCharactersOnly(text);
+}
+
+export function isValidPlanOrProductName(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  return PLAN_PRODUCT_NAME_REGEX.test(text) && !hasRepeatedCharactersOnly(text);
+}
+
+export function isValidTransactionReference(value) {
+  return TRANSACTION_REF_REGEX.test(String(value || "").trim());
+}
+
+export function isValidDocumentReference(value) {
+  return DOCUMENT_REF_REGEX.test(String(value || "").trim()) && !hasRepeatedCharactersOnly(value);
+}
+
+export function isValidOtp(value) {
+  return OTP_REGEX.test(String(value || "").trim());
+}
+
+export function isMeaningfulText(value, { minLength = 10, minWords = 2, maxLength = 2000 } = {}) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (text.length < minLength || text.length > maxLength) return false;
+  if (!hasMinimumWords(text, minWords)) return false;
+  if (hasRepeatedCharactersOnly(text)) return false;
+  if (!/[A-Za-z]/.test(text)) return false;
+  return true;
 }
 
 export function isBlank(value) {
@@ -40,12 +91,18 @@ export function passwordStrength(password) {
     return { valid: false, message: "Must be at least 8 characters" };
   if (password.length > 72)
     return { valid: false, message: "Must be under 72 characters" };
-  if (!/[A-Za-z]/.test(password))
-    return { valid: false, message: "Must include at least one letter" };
+  if (!/[a-z]/.test(password))
+    return { valid: false, message: "Must include at least one lowercase letter" };
+  if (!/[A-Z]/.test(password))
+    return { valid: false, message: "Must include at least one uppercase letter" };
   if (!/[0-9]/.test(password))
     return { valid: false, message: "Must include at least one number" };
+  if (!/[^A-Za-z0-9]/.test(password))
+    return { valid: false, message: "Must include at least one special character" };
   if (/^\s|\s$/.test(password))
     return { valid: false, message: "Cannot start or end with a space" };
+  if (hasRepeatedCharactersOnly(password))
+    return { valid: false, message: "Cannot be the same character repeated" };
   return { valid: true, message: "" };
 }
 

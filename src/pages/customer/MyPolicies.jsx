@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { policyApi } from "../../api/policyApi";
 import { paymentApi } from "../../api/paymentApi";
 import { useFetch } from "../../hooks/useFetch";
@@ -13,9 +14,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { PAYMENT_MODES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank } from "../../utils/validators";
-
-const TRANSACTION_REF_REGEX = /^[A-Za-z0-9_-]{6,50}$/;
+import { isBlank, isValidTransactionReference } from "../../utils/validators";
 
 function getAnnualPaymentWindow(policy) {
   if (policy.premiumType !== "ANNUAL") {
@@ -108,10 +107,10 @@ export default function MyPolicies() {
     if (isBlank(paymentForm.transactionReference)) {
       errors.transactionReference = "Transaction reference is required";
     } else if (
-      !TRANSACTION_REF_REGEX.test(paymentForm.transactionReference.trim())
+      !isValidTransactionReference(paymentForm.transactionReference)
     ) {
       errors.transactionReference =
-        "Use 6-50 letters, numbers, hyphens, or underscores only";
+        "Use a valid 6-50 character transaction reference";
     }
     return errors;
   };
@@ -179,7 +178,7 @@ export default function MyPolicies() {
                 <th>Paid</th>
                 <th>Next Due</th>
                 <th>Status</th>
-                <th>Payment</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -225,6 +224,9 @@ export default function MyPolicies() {
                   </td>
 
                   <td>
+                    <Link className="link-btn" to={`/customer/policies/${policy.policyId}`}>
+                      View
+                    </Link>
                     {(policy.status === "PENDING_PAYMENT" ||
                       (policy.premiumType === "ANNUAL" &&
                         policy.status === "ACTIVE")) && (
