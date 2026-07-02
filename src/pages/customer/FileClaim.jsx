@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { policyApi } from "../../api/policyApi";
 import { claimApi } from "../../api/claimApi";
+import { settlementApi } from "../../api/settlementApi";
 import Input from "../../components/common/Input";
 import Select from "../../components/common/Select";
 import Button from "../../components/common/Button";
@@ -25,6 +26,8 @@ const MAX_DOCUMENT_ROWS = 10;
 
 export default function FileClaim() {
   const [policies, setPolicies] = useState([]);
+  const [myClaims, setMyClaims] = useState([]);
+  const [claimSettlements, setClaimSettlements] = useState({});
   const [policiesLoading, setPoliciesLoading] = useState(true);
   const [form, setForm] = useState({ policyId: "", claimAmount: "", claimReason: "", incidentDate: "" });
   const [documents, setDocuments] = useState([{ ...emptyDocument }]);
@@ -35,11 +38,32 @@ export default function FileClaim() {
 
   useEffect(() => {
 
-    policyApi
-      .getMyPolicies({ page: 0, size: 100 })
-      .then((res) => {
-        const activeOnly = res.data.data.content.filter((p) => p.status === "ACTIVE");
+    Promise.all([
+      policyApi.getMyPolicies({ page: 0, size: 100 }),
+      claimApi.getMyClaims({ page: 0, size: 100 }),
+    ])
+      .then(([policyRes, claimRes]) => {
+        const activeOnly = policyRes.data.data.content.filter((p) => p.status === "ACTIVE");
+        const fetchedClaims = claimRes.data.data.content || [];
         setPolicies(activeOnly);
+        setMyClaims(fetchedClaims);
+
+        return Promise.allSettled(
+          fetchedClaims
+            .filter((claim) => claim.claimStatus !== "REJECTED")
+            .map((claim) => settlementApi.getByClaim(claim.claimId).then((res) => [claim.claimId, res.data.data]))
+        );
+      })
+      .then((settlementResults) => {
+        if (!settlementResults) return;
+        const settlementMap = {};
+        settlementResults.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const [claimId, settlement] = result.value;
+            settlementMap[claimId] = settlement;
+          }
+        });
+        setClaimSettlements(settlementMap);
       })
       .finally(() => setPoliciesLoading(false));
   }, []);
@@ -48,6 +72,19 @@ export default function FileClaim() {
     () => policies.find((p) => String(p.policyId) === String(form.policyId)) || null,
     [policies, form.policyId]
   );
+
+  const selectedPolicyClaimSummary = useMemo(() => {
+    if (!selectedPolicy) return { reserved: 0, remaining: 0, count: 0 };
+    const relevantClaims = myClaims.filter(
+      (claim) => String(claim.policyId) === String(selectedPolicy.policyId) && claim.claimStatus !== "REJECTED"
+    );
+    const reserved = relevantClaims.reduce((sum, claim) => {
+      const settlement = claimSettlements[claim.claimId];
+      return sum + Number(settlement?.approvedAmount ?? claim.claimAmount ?? 0);
+    }, 0);
+    const remaining = Math.max(0, Number(selectedPolicy.coverageAmount || 0) - reserved);
+    return { reserved, remaining, count: relevantClaims.length };
+  }, [claimSettlements, myClaims, selectedPolicy]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -98,8 +135,11 @@ export default function FileClaim() {
     } else if (selectedPolicy) {
       const amount = parseStrictNumber(form.claimAmount);
       const coverage = Number(selectedPolicy.coverageAmount);
+      const remaining = selectedPolicyClaimSummary.remaining;
       if (amount > coverage) {
         errors.claimAmount = `Claim amount cannot exceed this policy's coverage of ${formatCurrency(coverage)}`;
+      } else if (amount > remaining) {
+        errors.claimAmount = `Claim amount cannot exceed remaining claimable coverage of ${formatCurrency(remaining)}`;
       }
     }
 
@@ -204,7 +244,7 @@ export default function FileClaim() {
               value={form.claimAmount}
               onChange={handleFormChange}
               error={fieldErrors.claimAmount}
-              helperText={selectedPolicy ? `Maximum claimable: ${formatCurrency(selectedPolicy.coverageAmount)}` : "Select a policy first"}
+              helperText={selectedPolicy ? `Remaining claimable: ${formatCurrency(selectedPolicyClaimSummary.remaining)} · Reserved in existing claims: ${formatCurrency(selectedPolicyClaimSummary.reserved)}` : "Select a policy first"}
               placeholder="50000"
               disabled={!selectedPolicy}
             />
@@ -221,6 +261,15 @@ export default function FileClaim() {
               disabled={!selectedPolicy}
             />
           </div>
+
+          {selectedPolicy && (
+            <div className="safety-warning-card">
+              <strong>Coverage remaining for this policy</strong>
+              <p>
+                Total coverage is {formatCurrency(selectedPolicy.coverageAmount)}. Existing non-rejected claims reserve {formatCurrency(selectedPolicyClaimSummary.reserved)} using settlement approved amount when available, so you can currently claim up to {formatCurrency(selectedPolicyClaimSummary.remaining)}.
+              </p>
+            </div>
+          )}
 
           <div className="form-field">
             <label className="form-label">Claim Reason</label>

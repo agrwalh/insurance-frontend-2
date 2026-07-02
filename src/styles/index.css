@@ -1793,6 +1793,37 @@ textarea.form-input { resize: vertical; line-height: 1.5; }
   color: #F1F5F9;
 }
 
+.support-box {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.support-box h4 {
+  margin: 0 0 0.4rem;
+  color: #1e3a8a;
+  font-size: 1rem;
+}
+
+.support-box p {
+  margin: 0 0 0.7rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.support-box a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.support-box a:hover {
+  text-decoration: underline;
+}
+
 /* ── Auth card (left panel) goes dark ── */
 [data-theme="dark"] .auth-card {
   background: var(--surface);

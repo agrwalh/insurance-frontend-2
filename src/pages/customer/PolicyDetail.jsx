@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { policyApi } from "../../api/policyApi";
 import { paymentApi } from "../../api/paymentApi";
 import { customerApi } from "../../api/customerApi";
+import { claimApi } from "../../api/claimApi";
+import { settlementApi } from "../../api/settlementApi";
 import Alert from "../../components/common/Alert";
 import Card from "../../components/common/Card";
 import EmptyState from "../../components/common/EmptyState";
@@ -33,6 +35,8 @@ export default function PolicyDetail() {
   const { policyId } = useParams();
   const [policy, setPolicy] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [claims, setClaims] = useState([]);
+  const [claimSettlements, setClaimSettlements] = useState({});
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,10 +46,11 @@ export default function PolicyDetail() {
       setLoading(true);
       setError("");
       try {
-        const [policyRes, paymentsRes, profileRes] = await Promise.allSettled([
+        const [policyRes, paymentsRes, profileRes, claimsRes] = await Promise.allSettled([
           policyApi.getById(policyId),
           paymentApi.getMyPayments(policyId, { page: 0, size: 50 }),
           customerApi.getMyProfile(),
+          claimApi.getMyClaims({ page: 0, size: 100 }),
         ]);
 
         if (policyRes.status !== "fulfilled") throw policyRes.reason;
@@ -56,6 +61,25 @@ export default function PolicyDetail() {
         }
         if (profileRes.status === "fulfilled") {
           setProfile(profileRes.value.data.data);
+        }
+        if (claimsRes.status === "fulfilled") {
+          const fetchedClaims = claimsRes.value.data.data.content || [];
+          setClaims(fetchedClaims);
+
+          const settlementResults = await Promise.allSettled(
+            fetchedClaims
+              .filter((claim) => claim.claimStatus !== "REJECTED")
+              .map((claim) => settlementApi.getByClaim(claim.claimId).then((res) => [claim.claimId, res.data.data]))
+          );
+
+          const settlementMap = {};
+          settlementResults.forEach((result) => {
+            if (result.status === "fulfilled") {
+              const [claimId, settlement] = result.value;
+              settlementMap[claimId] = settlement;
+            }
+          });
+          setClaimSettlements(settlementMap);
         }
       } catch {
         setError("Could not load policy details.");
@@ -68,6 +92,14 @@ export default function PolicyDetail() {
 
   const schedule = useMemo(() => buildAnnualSchedule(policy || {}), [policy]);
   const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const policyClaims = claims.filter((claim) => String(claim.policyId) === String(policy?.policyId || policy?.id || policyId));
+  const reservedClaimAmount = policyClaims
+    .filter((claim) => claim.claimStatus !== "REJECTED")
+    .reduce((sum, claim) => {
+      const settlement = claimSettlements[claim.claimId];
+      return sum + Number(settlement?.approvedAmount ?? claim.claimAmount ?? 0);
+    }, 0);
+  const remainingCoverage = Math.max(0, Number(policy?.coverageAmount || 0) - reservedClaimAmount);
 
   const printCertificate = () => window.print();
 
@@ -120,6 +152,18 @@ export default function PolicyDetail() {
             <div><dt>Next Premium Due</dt><dd>{formatDate(policy.nextPremiumDueDate)}</dd></div>
             {policy.premiumType === "ANNUAL" && <div><dt>Premiums Paid</dt><dd>{policy.premiumsPaid ?? 0}/{policy.durationYears}</dd></div>}
           </dl>
+        </Card>
+
+        <Card title="Coverage Utilization">
+          <dl className="detail-list">
+            <div><dt>Total Coverage</dt><dd>{formatCurrency(policy.coverageAmount)}</dd></div>
+            <div><dt>Claimed / Reserved</dt><dd>{formatCurrency(reservedClaimAmount)}</dd></div>
+            <div><dt>Remaining Claimable</dt><dd>{formatCurrency(remainingCoverage)}</dd></div>
+            <div><dt>Relevant Claims</dt><dd>{policyClaims.filter((claim) => claim.claimStatus !== "REJECTED").length}</dd></div>
+          </dl>
+          <p className="field-hint" style={{ marginTop: "0.75rem" }}>
+            Remaining coverage excludes rejected claims. If a settlement exists, the approved settlement amount is used; otherwise the requested claim amount is reserved.
+          </p>
         </Card>
 
         <Card title="Nominee & Address Context">

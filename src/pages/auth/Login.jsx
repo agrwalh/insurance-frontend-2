@@ -12,7 +12,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { fieldErrors, generalError, setFieldError, clearFieldError, clearAll, handleApiError } = useFormErrors();
+  const {
+    fieldErrors,
+    generalError,
+    setFieldError,
+    clearFieldError,
+    clearAll,
+    handleApiError,
+  } = useFormErrors();
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -22,7 +29,8 @@ export default function Login() {
   const validate = () => {
     const errors = {};
     if (isBlank(form.email)) errors.email = "Email is required";
-    else if (!isValidEmail(form.email)) errors.email = "Enter a valid email address";
+    else if (!isValidEmail(form.email))
+      errors.email = "Enter a valid email address";
     if (isBlank(form.password)) errors.password = "Password is required";
     return errors;
   };
@@ -38,7 +46,13 @@ export default function Login() {
     setLoading(true);
     try {
       const u = await login(form.email.trim().toLowerCase(), form.password);
-      navigate(u.role === "ADMIN" ? "/admin/dashboard" : u.role === "AGENT" ? "/agent/dashboard" : "/customer/dashboard");
+      navigate(
+        u.role === "ADMIN"
+          ? "/admin/dashboard"
+          : u.role === "AGENT"
+            ? "/agent/dashboard"
+            : "/customer/dashboard",
+      );
     } catch (err) {
       handleApiError(err);
     } finally {
@@ -55,32 +69,62 @@ export default function Login() {
         </div>
 
         <h1 className="auth-title">Welcome back</h1>
-        <span className="auth-subtitle">Sign in to access your insurance dashboard</span>
+        <span className="auth-subtitle">
+          Sign in to access your insurance dashboard
+        </span>
 
         <Alert type="error" message={generalError} onClose={clearAll} />
 
         <form onSubmit={handleSubmit} noValidate>
-          <Input label="Email address" name="email" type="email" value={form.email}
-            onChange={handleChange} error={fieldErrors.email} placeholder="you@example.com" />
-          <Input label="Password" name="password" type="password" value={form.password}
-            onChange={handleChange} error={fieldErrors.password} placeholder="Your password" />
+          <Input
+            label="Email address"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            error={fieldErrors.email}
+            placeholder="you@example.com"
+          />
+          <Input
+            label="Password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            error={fieldErrors.password}
+            placeholder="Your password"
+          />
           <div style={{ textAlign: "right", margin: "-0.45rem 0 0.85rem" }}>
-            <Link className="link-btn" to="/forgot-password">Forgot password?</Link>
+            <Link className="link-btn" to="/forgot-password">
+              Forgot password?
+            </Link>
           </div>
           <div style={{ marginTop: "0.25rem" }}>
-            <Button type="submit" fullWidth loading={loading}>Sign in</Button>
+            <Button type="submit" fullWidth loading={loading}>
+              Sign in
+            </Button>
           </div>
         </form>
 
         <p className="auth-footer">
           Don't have an account? <Link to="/register">Create one</Link>
         </p>
+        <div className="support-box">
+          <h4>Need Assistance?</h4>
+          <p>
+            Having trouble accessing your account? Our support team is here to
+            help.
+          </p>
+          <a href="mailto:admin@gmail.com">📧 admin@gmail.com</a>
+        </div>
       </div>
       <div className="auth-image">
         <p className="auth-image-quote">
           "Protecting what matters most — family, health, and your future"
         </p>
-        <p className="auth-image-sub">Join thousands of customers managing their policies with SecureCover</p>
+        <p className="auth-image-sub">
+          Join thousands of customers managing their policies with SecureCover
+        </p>
         <div className="auth-image-stats">
           <div>
             <span className="auth-stat-value">50K+</span>
