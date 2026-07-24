@@ -11,7 +11,12 @@ import Button from "../../components/common/Button";
 import Select from "../../components/common/Select";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
-import { formatCurrency, formatDate, formatDateTime, formatLabel } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatLabel,
+} from "../../utils/formatters";
 import { DOCUMENT_TYPES } from "../../utils/constants";
 import { isBlank, extractErrorMessage } from "../../utils/validators";
 
@@ -28,7 +33,9 @@ export default function ClaimDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(
-    location.state?.justSubmitted ? "Claim submitted! Now upload your supporting documents below." : ""
+    location.state?.justSubmitted
+      ? "Claim submitted! Now upload your supporting documents below."
+      : "",
   );
 
   const [docName, setDocName] = useState("");
@@ -45,18 +52,29 @@ export default function ClaimDetail() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [claimRes, docsRes, historyRes, settlementRes] = await Promise.allSettled([
-        claimApi.getById(claimId),
-        documentApi.getByClaim(claimId),
-        claimApi.getHistory(claimId, { page: 0, size: 50 }),
-        settlementApi.getByClaim(claimId),
-      ]);
+      const [claimRes, docsRes, historyRes, settlementRes] =
+        await Promise.allSettled([
+          claimApi.getById(claimId),
+          documentApi.getByClaim(claimId),
+          claimApi.getHistory(claimId, { page: 0, size: 50 }),
+          settlementApi.getByClaim(claimId),
+        ]);
 
       if (claimRes.status !== "fulfilled") throw claimRes.reason;
       setClaim(claimRes.value.data.data);
-      setDocuments(docsRes.status === "fulfilled" ? docsRes.value.data.data : []);
-      setHistory(historyRes.status === "fulfilled" ? historyRes.value.data.data.content : []);
-      setSettlement(settlementRes.status === "fulfilled" ? settlementRes.value.data.data : null);
+      setDocuments(
+        docsRes.status === "fulfilled" ? docsRes.value.data.data : [],
+      );
+      setHistory(
+        historyRes.status === "fulfilled"
+          ? historyRes.value.data.data.content
+          : [],
+      );
+      setSettlement(
+        settlementRes.status === "fulfilled"
+          ? settlementRes.value.data.data
+          : null,
+      );
     } catch (err) {
       setError("Could not load claim details.");
     } finally {
@@ -118,10 +136,13 @@ export default function ClaimDetail() {
 
   const handleDeleteDocument = async (documentId, documentName) => {
     if (!documentId) {
-      setError("Could not identify this document for deletion. Please refresh and try again.");
+      setError(
+        "Could not identify this document for deletion. Please refresh and try again.",
+      );
       return;
     }
-    if (!window.confirm(`Delete "${documentName}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${documentName}"? This cannot be undone.`))
+      return;
 
     setError("");
     setDeletingId(documentId);
@@ -138,7 +159,8 @@ export default function ClaimDetail() {
   if (loading) return <Loader label="Loading claim..." />;
   if (!claim) return <EmptyState message="Claim not found." />;
 
-  const canManageDocuments = claim.claimStatus === "SUBMITTED" || claim.claimStatus === "UNDER_REVIEW";
+  const canManageDocuments =
+    claim.claimStatus === "SUBMITTED" || claim.claimStatus === "UNDER_REVIEW";
 
   return (
     <div>
@@ -153,40 +175,102 @@ export default function ClaimDetail() {
       <div className="detail-grid">
         <Card title="Claim Details">
           <dl className="detail-list">
-            <div><dt>Status</dt><dd><StatusBadge status={claim.claimStatus} /></dd></div>
-            <div><dt>Claim Amount</dt><dd>{formatCurrency(claim.claimAmount)}</dd></div>
-            <div><dt>Incident Date</dt><dd>{formatDate(claim.incidentDate)}</dd></div>
-            <div><dt>Reason</dt><dd>{claim.claimReason}</dd></div>
-            {claim.agentRemarks && <div><dt>Insurance Operations Officer Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
-            {claim.adminRemarks && <div><dt>Admin Remarks</dt><dd>{claim.adminRemarks}</dd></div>}
-            <div><dt>Submitted</dt><dd>{formatDateTime(claim.createdAt)}</dd></div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <StatusBadge status={claim.claimStatus} />
+              </dd>
+            </div>
+            <div>
+              <dt>Claim Amount</dt>
+              <dd>{formatCurrency(claim.claimAmount)}</dd>
+            </div>
+            <div>
+              <dt>Incident Date</dt>
+              <dd>{formatDate(claim.incidentDate)}</dd>
+            </div>
+            <div>
+              <dt>Reason</dt>
+              <dd>{claim.claimReason}</dd>
+            </div>
+            {claim.agentRemarks && (
+              <div>
+                <dt>Insurance Operations Officer Remarks</dt>
+                <dd>{claim.agentRemarks}</dd>
+              </div>
+            )}
+            {claim.adminRemarks && (
+              <div>
+                <dt>Admin Remarks</dt>
+                <dd>{claim.adminRemarks}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Submitted</dt>
+              <dd>{formatDateTime(claim.createdAt)}</dd>
+            </div>
           </dl>
         </Card>
 
         <Card title="Settlement Details">
           {settlement ? (
             <dl className="detail-list">
-              <div><dt>Settlement Number</dt><dd>{settlement.settlementNumber || "—"}</dd></div>
-              <div><dt>Status</dt><dd><StatusBadge status={settlement.settlementStatus} /></dd></div>
-              <div><dt>Approved Amount</dt><dd>{formatCurrency(settlement.approvedAmount)}</dd></div>
-              <div><dt>Payment Reference</dt><dd>{settlement.paymentReference || "Pending"}</dd></div>
-              <div><dt>Initiated</dt><dd>{formatDateTime(settlement.createdAt || settlement.initiatedAt)}</dd></div>
-              <div><dt>Paid / Updated</dt><dd>{formatDateTime(settlement.paidAt || settlement.updatedAt)}</dd></div>
+              <div>
+                <dt>Settlement Number</dt>
+                <dd>{settlement.settlementNumber || "—"}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <StatusBadge status={settlement.settlementStatus} />
+                </dd>
+              </div>
+              <div>
+                <dt>Approved Amount</dt>
+                <dd>{formatCurrency(settlement.approvedAmount)}</dd>
+              </div>
+              <div>
+                <dt>Payment Reference</dt>
+                <dd>{settlement.paymentReference || "Pending"}</dd>
+              </div>
+              <div>
+                <dt>Initiated</dt>
+                <dd>
+                  {formatDateTime(
+                    settlement.createdAt || settlement.initiatedAt,
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Paid / Updated</dt>
+                <dd>
+                  {formatDateTime(settlement.paidAt || settlement.updatedAt)}
+                </dd>
+              </div>
             </dl>
           ) : claim.claimStatus === "APPROVED" ? (
             <div className="settlement-empty-card">
               <strong>Approved — settlement pending</strong>
-              <p>Your claim is approved. Settlement details will appear here once admin initiates payout.</p>
+              <p>
+                Your claim is approved. Settlement details will appear here once
+                admin initiates payout.
+              </p>
             </div>
           ) : claim.claimStatus === "REJECTED" ? (
             <div className="settlement-empty-card rejected">
               <strong>No settlement applicable</strong>
-              <p>This claim was rejected, so no settlement payout will be generated.</p>
+              <p>
+                This claim was rejected, so no settlement payout will be
+                generated.
+              </p>
             </div>
           ) : (
             <div className="settlement-empty-card">
               <strong>Settlement not available yet</strong>
-              <p>Settlement details become available after claim approval and payout initiation.</p>
+              <p>
+                Settlement details become available after claim approval and
+                payout initiation.
+              </p>
             </div>
           )}
         </Card>
@@ -200,9 +284,17 @@ export default function ClaimDetail() {
                 <li key={h.historyId} className="timeline-item">
                   <span className="timeline-dot" />
                   <div>
-                    <p className="timeline-status">{formatLabel(h.previousStatus)} → {formatLabel(h.newStatus)}</p>
-                    <p className="timeline-meta">{h.updatedByName} ({h.updatedByRole}) · {formatDateTime(h.updatedAt)}</p>
-                    {h.remarks && <p className="timeline-remarks">"{h.remarks}"</p>}
+                    <p className="timeline-status">
+                      {formatLabel(h.previousStatus)} →{" "}
+                      {formatLabel(h.newStatus)}
+                    </p>
+                    <p className="timeline-meta">
+                      {h.updatedByName} ({h.updatedByRole}) ·{" "}
+                      {formatDateTime(h.updatedAt)}
+                    </p>
+                    {h.remarks && (
+                      <p className="timeline-remarks">"{h.remarks}"</p>
+                    )}
                   </div>
                 </li>
               ))}
@@ -219,21 +311,34 @@ export default function ClaimDetail() {
             {documents.map((doc) => {
               const docId = doc.documentId || doc.id;
               return (
-              <li key={docId || doc.documentUrl || doc.documentName} className="document-item">
-                <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer">{doc.documentName}</a>
-                <span className="document-meta">{formatLabel(doc.documentType)} · {doc.fileSizeReadable}</span>
-                {canManageDocuments && (
-                  <button
-                    type="button"
-                    className="link-btn link-btn-danger"
-                    disabled={deletingId === docId}
-                    onClick={() => handleDeleteDocument(docId, doc.documentName)}
+                <li
+                  key={docId || doc.documentUrl || doc.documentName}
+                  className="document-item"
+                >
+                  <a
+                    href={doc.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    {deletingId === docId ? "Deleting..." : "Delete"}
-                  </button>
-                )}
-              </li>
-            );
+                    {doc.documentName}
+                  </a>
+                  <span className="document-meta">
+                    {formatLabel(doc.documentType)} · {doc.fileSizeReadable}
+                  </span>
+                  {canManageDocuments && (
+                    <button
+                      type="button"
+                      className="link-btn link-btn-danger"
+                      disabled={deletingId === docId}
+                      onClick={() =>
+                        handleDeleteDocument(docId, doc.documentName)
+                      }
+                    >
+                      {deletingId === docId ? "Deleting..." : "Delete"}
+                    </button>
+                  )}
+                </li>
+              );
             })}
           </ul>
         )}
@@ -243,7 +348,9 @@ export default function ClaimDetail() {
             <hr className="form-divider" />
             <h4 className="form-section-title">Upload Supporting File</h4>
             <p className="form-section-hint">
-              Upload the actual file for your bill, report, photo, or other proof. You can remove uploaded files while the claim is still submitted or under review.
+              Upload the actual file for your bill, report, photo, or other
+              proof. You can remove uploaded files while the claim is still
+              submitted or under review.
             </p>
 
             <form onSubmit={handleUpload} noValidate>
@@ -253,27 +360,46 @@ export default function ClaimDetail() {
                   <input
                     className={`form-input ${uploadErrors.docName ? "input-error" : ""}`}
                     value={docName}
-                    onChange={(e) => { setDocName(e.target.value); setUploadErrors((p) => ({ ...p, docName: "" })); }}
+                    onChange={(e) => {
+                      setDocName(e.target.value);
+                      setUploadErrors((p) => ({ ...p, docName: "" }));
+                    }}
                     placeholder="e.g. Hospital Bill"
                     maxLength={150}
                   />
-                  {uploadErrors.docName && <span className="field-error">{uploadErrors.docName}</span>}
+                  {uploadErrors.docName && (
+                    <span className="field-error">{uploadErrors.docName}</span>
+                  )}
                 </div>
                 <Select
                   label="Document Type"
                   value={docType}
-                  onChange={(e) => { setDocType(e.target.value); setUploadErrors((p) => ({ ...p, docType: "" })); }}
+                  onChange={(e) => {
+                    setDocType(e.target.value);
+                    setUploadErrors((p) => ({ ...p, docType: "" }));
+                  }}
                   error={uploadErrors.docType}
                   options={DOCUMENT_TYPES}
                   placeholder="Select type"
                 />
               </div>
 
-              <DocumentDropzone onFileSelected={(f) => { setSelectedFile(f); setUploadErrors((p) => ({ ...p, file: "" })); }} />
-              {uploadErrors.file && <span className="field-error">{uploadErrors.file}</span>}
+              <DocumentDropzone
+                onFileSelected={(f) => {
+                  setSelectedFile(f);
+                  setUploadErrors((p) => ({ ...p, file: "" }));
+                }}
+              />
+              {uploadErrors.file && (
+                <span className="field-error">{uploadErrors.file}</span>
+              )}
 
               <div style={{ marginTop: "1rem" }}>
-                <Button type="submit" loading={uploading} disabled={documents.length >= MAX_DOCUMENTS_PER_CLAIM}>
+                <Button
+                  type="submit"
+                  loading={uploading}
+                  disabled={documents.length >= MAX_DOCUMENTS_PER_CLAIM}
+                >
                   Upload Document
                 </Button>
               </div>
@@ -281,7 +407,8 @@ export default function ClaimDetail() {
           </>
         ) : (
           <p className="form-section-hint" style={{ marginTop: "1rem" }}>
-            This claim has already been reviewed, so new documents can no longer be added.
+            This claim has already been reviewed, so new documents can no longer
+            be added.
           </p>
         )}
       </Card>

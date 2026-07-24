@@ -20,7 +20,6 @@ export function useFetch(fetchFn, dependencies = []) {
       .finally(() => {
         setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
   useEffect(() => {

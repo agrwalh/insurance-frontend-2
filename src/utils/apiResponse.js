@@ -40,7 +40,10 @@ export function normalizeApiResponse(response) {
   return response;
 }
 
-export function getApiErrorMessage(error, fallback = "Something went wrong. Please try again.") {
+export function getApiErrorMessage(
+  error,
+  fallback = "Something went wrong. Please try again.",
+) {
   const payload = error?.response?.data;
 
   if (typeof payload === "string") return payload;

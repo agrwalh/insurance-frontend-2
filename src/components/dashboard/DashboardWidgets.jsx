@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 
-export function MetricCard({ label, value, hint, icon = "●", tone = "emerald", trend }) {
+export function MetricCard({
+  label,
+  value,
+  hint,
+  icon = "●",
+  tone = "emerald",
+  trend,
+}) {
   return (
     <div className={`metric-card metric-card-${tone}`}>
       <div className="metric-card-top">
@@ -59,7 +66,8 @@ export function StatusBreakdown({ items = [] }) {
   return (
     <div className="status-breakdown">
       {items.map((item) => {
-        const percent = total > 0 ? Math.round((Number(item.value || 0) / total) * 100) : 0;
+        const percent =
+          total > 0 ? Math.round((Number(item.value || 0) / total) * 100) : 0;
         return (
           <div key={item.label} className="status-row">
             <div className="status-row-meta">
@@ -67,7 +75,10 @@ export function StatusBreakdown({ items = [] }) {
               <strong>{item.value}</strong>
             </div>
             <div className="status-track">
-              <span className={`status-fill status-fill-${item.tone || "emerald"}`} style={{ width: `${percent}%` }} />
+              <span
+                className={`status-fill status-fill-${item.tone || "emerald"}`}
+                style={{ width: `${percent}%` }}
+              />
             </div>
           </div>
         );
@@ -84,7 +95,9 @@ export function ActivityList({ items = [], empty = "No recent activity." }) {
     <ul className="activity-list">
       {items.map((item, index) => (
         <li key={item.id || index}>
-          <span className={`activity-dot activity-dot-${item.tone || "emerald"}`} />
+          <span
+            className={`activity-dot activity-dot-${item.tone || "emerald"}`}
+          />
           <div>
             <strong>{item.title}</strong>
             {item.meta && <p>{item.meta}</p>}

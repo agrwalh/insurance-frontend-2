@@ -8,6 +8,7 @@ import Select from "../../components/common/Select";
 import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import Card from "../../components/common/Card";
+import DocumentDropzone from "../../components/common/DocumentDropzone";
 import { DOCUMENT_TYPES } from "../../utils/constants";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { useFormErrors } from "../../hooks/useFormErrors";
@@ -17,11 +18,11 @@ import {
   parseStrictNumber,
   isPastOrToday,
   isMeaningfulText,
-  isValidDocumentReference,
   toDateOnly,
+  extractErrorMessage,
 } from "../../utils/validators";
 
-const emptyDocument = { documentName: "", documentType: "", documentReference: "" };
+const emptyDocument = { documentName: "", documentType: "", file: null };
 const MAX_DOCUMENT_ROWS = 10;
 
 export default function FileClaim() {
@@ -37,7 +38,6 @@ export default function FileClaim() {
   const { fieldErrors, generalError, setFieldError, clearFieldError, clearAll, handleApiError } = useFormErrors();
 
   useEffect(() => {
-
     Promise.all([
       policyApi.getMyPolicies({ page: 0, size: 100 }),
       claimApi.getMyClaims({ page: 0, size: 100 }),
@@ -90,9 +90,7 @@ export default function FileClaim() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     clearFieldError(name);
-    if (name === "policyId") {
-      clearFieldError("claimAmount");
-    }
+    if (name === "policyId") clearFieldError("claimAmount");
   };
 
   const handleDocumentChange = (index, field, value) => {
@@ -101,6 +99,7 @@ export default function FileClaim() {
       next[index] = { ...next[index], [field]: value };
       return next;
     });
+    clearFieldError("documents");
   };
 
   const addDocumentRow = () => {
@@ -124,9 +123,7 @@ export default function FileClaim() {
   const validate = () => {
     const errors = {};
 
-    if (isBlank(form.policyId)) {
-      errors.policyId = "Please select a policy";
-    }
+    if (isBlank(form.policyId)) errors.policyId = "Please select a policy";
 
     if (isBlank(form.claimAmount)) {
       errors.claimAmount = "Claim amount is required";
@@ -161,16 +158,16 @@ export default function FileClaim() {
       errors.claimReason = "Please describe the incident clearly with at least 5 meaningful words";
     }
 
-    const validDocuments = documents.filter((d) => !isBlank(d.documentName) || !isBlank(d.documentType) || !isBlank(d.documentReference));
+    const activeDocuments = documents.filter((d) => d.documentName || d.documentType || d.file);
 
-    if (validDocuments.length === 0) {
-      errors.documents = "Please describe at least one supporting document";
+    if (activeDocuments.length === 0) {
+      errors.documents = "Please attach at least one supporting document";
     } else {
-      const incomplete = validDocuments.some((d) => isBlank(d.documentName) || isBlank(d.documentType) || isBlank(d.documentReference));
+      const incomplete = activeDocuments.some((d) => isBlank(d.documentName) || isBlank(d.documentType) || !d.file);
       if (incomplete) {
-        errors.documents = "Each document row needs a name, type, and reference - remove any unfinished rows";
-      } else if (validDocuments.some((d) => !isMeaningfulText(d.documentName, { minLength: 3, minWords: 1, maxLength: 150 }) || !isValidDocumentReference(d.documentReference))) {
-        errors.documents = "Document names and references must be valid, meaningful, and free from unsafe symbols";
+        errors.documents = "Each document row needs a name, type, and an attached file - remove any unfinished rows";
+      } else if (activeDocuments.some((d) => !isMeaningfulText(d.documentName, { minLength: 3, minWords: 1, maxLength: 150 }))) {
+        errors.documents = "Document names must be meaningful (at least 3 characters)";
       }
     }
 
@@ -187,18 +184,32 @@ export default function FileClaim() {
       return;
     }
 
-    const validDocuments = documents.filter((d) => d.documentName && d.documentType && d.documentReference);
+    const activeDocuments = documents.filter((d) => d.documentName && d.documentType && d.file);
+
+    const formData = new FormData();
+    formData.append(
+      "claimData",
+      new Blob(
+        [
+          JSON.stringify({
+            policyId: Number(form.policyId),
+            claimAmount: parseStrictNumber(form.claimAmount),
+            claimReason: form.claimReason.trim(),
+            incidentDate: form.incidentDate,
+          }),
+        ],
+        { type: "application/json" }
+      )
+    );
+    activeDocuments.forEach((doc) => {
+      formData.append("files", doc.file);
+      formData.append("documentNames", doc.documentName.trim());
+      formData.append("documentTypes", doc.documentType);
+    });
 
     setLoading(true);
     try {
-      const res = await claimApi.submit({
-        policyId: Number(form.policyId),
-        claimAmount: parseStrictNumber(form.claimAmount),
-        claimReason: form.claimReason.trim(),
-        incidentDate: form.incidentDate,
-        documents: validDocuments,
-      });
-
+      const res = await claimApi.submitWithDocuments(formData);
       const newClaimId = res.data.data.claimId;
       navigate(`/customer/claims/${newClaimId}`, { state: { justSubmitted: true } });
     } catch (err) {
@@ -212,7 +223,7 @@ export default function FileClaim() {
     <div>
       <div className="page-header">
         <h1>File a Claim</h1>
-        <p className="page-subtitle">Tell us what happened, then upload your supporting documents</p>
+        <p className="page-subtitle">Tell us what happened and attach your supporting documents — all in one go</p>
       </div>
 
       <Card>
@@ -266,7 +277,7 @@ export default function FileClaim() {
             <div className="safety-warning-card">
               <strong>Coverage remaining for this policy</strong>
               <p>
-                Total coverage is {formatCurrency(selectedPolicy.coverageAmount)}. Existing non-rejected claims reserve {formatCurrency(selectedPolicyClaimSummary.reserved)} using settlement approved amount when available, so you can currently claim up to {formatCurrency(selectedPolicyClaimSummary.remaining)}.
+                Total coverage is {formatCurrency(selectedPolicy.coverageAmount)}. Existing non-rejected claims reserve {formatCurrency(selectedPolicyClaimSummary.reserved)}, so you can currently claim up to {formatCurrency(selectedPolicyClaimSummary.remaining)}.
               </p>
             </div>
           )}
@@ -290,44 +301,44 @@ export default function FileClaim() {
           </div>
 
           <hr className="form-divider" />
-          <h3 className="form-section-title">Supporting Document Checklist</h3>
+          <h3 className="form-section-title">Supporting Documents</h3>
           <p className="form-section-hint">
-            Add the documents you plan to submit for this claim. After the claim is created, you will upload the actual files on the next screen.
+            Attach the actual files (hospital bill, invoice, photo, etc.) that support this claim — PDF, JPG, or PNG.
           </p>
           {fieldErrors.documents && <Alert type="error" message={fieldErrors.documents} onClose={() => clearFieldError("documents")} />}
 
           {documents.map((doc, index) => (
-            <div key={index} className="document-row">
-              <Input
-                label="Document Name"
-                value={doc.documentName}
-                onChange={(e) => handleDocumentChange(index, "documentName", e.target.value)}
-                placeholder="e.g. Hospital Bill"
-                maxLength={150}
-              />
-              <Select
-                label="Document Type"
-                value={doc.documentType}
-                onChange={(e) => handleDocumentChange(index, "documentType", e.target.value)}
-                options={DOCUMENT_TYPES}
-                placeholder="Select type"
-              />
-              <Input
-                label="Reference / Number"
-                value={doc.documentReference}
-                onChange={(e) => handleDocumentChange(index, "documentReference", e.target.value)}
-                placeholder="e.g. Invoice #1234"
-                maxLength={150}
-              />
-              <button
-                type="button"
-                className="remove-row-btn"
-                onClick={() => documents.length > 1 ? removeDocumentRow(index) : clearDocumentRow(index)}
-                aria-label={documents.length > 1 ? "Remove document" : "Clear document row"}
-                title={documents.length > 1 ? "Remove this document row" : "Clear this document row"}
-              >
-                ×
-              </button>
+            <div key={index} className="document-row-full">
+              <div className="form-row">
+                <Input
+                  label="Document Name"
+                  value={doc.documentName}
+                  onChange={(e) => handleDocumentChange(index, "documentName", e.target.value)}
+                  placeholder="e.g. Hospital Bill"
+                  maxLength={150}
+                />
+                <Select
+                  label="Document Type"
+                  value={doc.documentType}
+                  onChange={(e) => handleDocumentChange(index, "documentType", e.target.value)}
+                  options={DOCUMENT_TYPES}
+                  placeholder="Select type"
+                />
+              </div>
+
+              <DocumentDropzone onFileSelected={(file) => handleDocumentChange(index, "file", file)} />
+
+              {documents.length > 1 && (
+                <button type="button" className="link-btn link-btn-danger" onClick={() => removeDocumentRow(index)}>
+                  Remove this document
+                </button>
+              )}
+              {documents.length === 1 && (doc.documentName || doc.documentType || doc.file) && (
+                <button type="button" className="link-btn" onClick={() => clearDocumentRow(index)}>
+                  Clear
+                </button>
+              )}
+              <hr className="form-divider" />
             </div>
           ))}
 
@@ -340,11 +351,8 @@ export default function FileClaim() {
           )}
 
           <div style={{ marginTop: "1.5rem" }}>
-            <p className="field-hint" style={{ marginBottom: "0.75rem" }}>
-              Next step: upload files like PDF, JPG, or PNG after this claim number is generated.
-            </p>
             <Button type="submit" loading={loading} disabled={policies.length === 0}>
-              Submit Claim & Continue to Upload
+              Submit Claim
             </Button>
           </div>
         </form>

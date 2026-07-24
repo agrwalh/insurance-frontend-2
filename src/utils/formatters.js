@@ -29,7 +29,7 @@ export function formatDateTime(dateString) {
   });
 }
 
-// Turns "UNDER_REVIEW" into "Under Review" for friendlier display
+
 export function formatLabel(value) {
   if (!value) return "—";
   if (value === "AGENT") return "Insurance Operations Officer";

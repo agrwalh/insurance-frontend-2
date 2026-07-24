@@ -35,9 +35,7 @@ export default function Navbar() {
             aria-label={`Switch to ${
               theme === "light" ? "dark" : "light"
             } mode`}
-            title={`Switch to ${
-              theme === "light" ? "dark" : "light"
-            } mode`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
           >
             {theme === "light" ? "🌙" : "☀️"}
           </button>
@@ -51,7 +49,11 @@ export default function Navbar() {
             <>
               <div className="navbar-user">
                 <span className="user-name">{user.fullName}</span>
-                <span className="user-role">{user.role === "AGENT" ? "Insurance Operations Officer" : user.role}</span>
+                <span className="user-role">
+                  {user.role === "AGENT"
+                    ? "Insurance Operations Officer"
+                    : user.role}
+                </span>
               </div>
 
               <button className="logout-btn" onClick={handleLogout}>
@@ -68,10 +70,7 @@ export default function Navbar() {
           className="modal-overlay"
           onClick={() => setShowOfficerModal(false)}
         >
-          <div
-            className="agent-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="agent-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Talk to an Insurance Expert</h2>
 
             <p>

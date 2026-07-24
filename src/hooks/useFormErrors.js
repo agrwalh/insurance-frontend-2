@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { extractErrorMessage, parseBackendFieldErrors } from "../utils/validators";
+import {
+  extractErrorMessage,
+  parseBackendFieldErrors,
+} from "../utils/validators";
 export function useFormErrors() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState("");
@@ -33,5 +36,13 @@ export function useFormErrors() {
     }
   };
 
-  return { fieldErrors, generalError, setFieldError, clearFieldError, clearAll, handleApiError, setGeneralError };
+  return {
+    fieldErrors,
+    generalError,
+    setFieldError,
+    clearFieldError,
+    clearAll,
+    handleApiError,
+    setGeneralError,
+  };
 }

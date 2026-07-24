@@ -7,11 +7,14 @@ import Alert from "../../components/common/Alert";
 import Button from "../../components/common/Button";
 import Pagination from "../../components/common/Pagination";
 import EmptyState from "../../components/common/EmptyState";
-import { formatCurrency, formatLabel } from "../../utils/formatters";
+import { formatCurrency, formatLabel, formatDate } from "../../utils/formatters";
 import {
   ACTIVE_LIKE_POLICY_STATUSES,
   MAX_PENDING_PAYMENT_POLICIES,
   PRODUCT_POLICY_LIMITS,
+  PREMIUM_FREQUENCIES,
+  calculateInstallment,
+  getFrequencyBadge,
 } from "../../utils/constants";
 import {
   isBlank,
@@ -21,9 +24,11 @@ import {
 } from "../../utils/validators";
 
 const TODAY_STR = new Date().toISOString().split("T")[0];
-const MAX_START = (() => {
+
+// Travel plans: customer can pick a future trip date, capped at ~90 days ahead
+const MAX_TRAVEL_START = (() => {
   const d = new Date();
-  d.setFullYear(d.getFullYear() + 1);
+  d.setDate(d.getDate() + 90);
   return d.toISOString().split("T")[0];
 })();
 
@@ -42,12 +47,16 @@ const PLAN_IMAGES = {
 export default function BrowsePlans() {
   const [page, setPage] = useState(0);
   const [purchasingId, setPurchasingId] = useState(null);
-  const [startDate, setStartDate] = useState("");
-  const [dateError, setDateError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [myPolicies, setMyPolicies] = useState([]);
   const [policiesLoading, setPoliciesLoading] = useState(true);
+
+  // Frequency chosen per ANNUAL plan (e.g. { planId: "MONTHLY" })
+  const [frequencyByPlan, setFrequencyByPlan] = useState({});
+  // Trip/start date chosen per TRAVEL plan only
+  const [travelDateByPlan, setTravelDateByPlan] = useState({});
+  const [travelDateErrorByPlan, setTravelDateErrorByPlan] = useState({});
 
   const {
     data,
@@ -143,31 +152,39 @@ export default function BrowsePlans() {
     };
   };
 
-  const handleDateChange = (e) => {
-    setStartDate(e.target.value);
-    setDateError("");
+  const handleTravelDateChange = (planId, value) => {
+    setTravelDateByPlan((prev) => ({ ...prev, [planId]: value }));
+    setTravelDateErrorByPlan((prev) => ({ ...prev, [planId]: "" }));
   };
 
-  const validateDate = () => {
-    if (isBlank(startDate)) return "Please choose a policy start date first.";
-    if (!isFutureOrToday(startDate)) return "Start date cannot be in the past.";
-    if (toDateOnly(startDate).getTime() > toDateOnly(MAX_START).getTime())
-      return "Start date cannot be more than a year from today.";
+  // Only TRAVEL plans need date validation — everything else always starts today
+  const validateStartDate = (plan) => {
+    if (plan.productType !== "TRAVEL") return "";
+
+    const chosen = travelDateByPlan[plan.planId];
+    if (isBlank(chosen)) return "Please choose your trip start date.";
+    if (!isFutureOrToday(chosen)) return "Start date cannot be in the past.";
+    if (toDateOnly(chosen).getTime() > toDateOnly(MAX_TRAVEL_START).getTime())
+      return "Trip start date cannot be more than 90 days from today.";
     return "";
   };
+
+  const getStartDateForPlan = (plan) =>
+    plan.productType === "TRAVEL" ? travelDateByPlan[plan.planId] : TODAY_STR;
 
   const handlePurchase = async (planId) => {
     setError("");
     setSuccess("");
-    const msg = validateDate();
-    if (msg) {
-      setDateError(msg);
-      return;
-    }
 
     const plan = data?.content?.find((item) => String(item.planId) === String(planId));
     if (!plan) {
       setError("Could not verify this plan. Please refresh and try again.");
+      return;
+    }
+
+    const dateMsg = validateStartDate(plan);
+    if (dateMsg) {
+      setTravelDateErrorByPlan((prev) => ({ ...prev, [planId]: dateMsg }));
       return;
     }
 
@@ -177,9 +194,19 @@ export default function BrowsePlans() {
       return;
     }
 
+    const chosenFrequency = frequencyByPlan[planId];
+    if (plan.premiumType === "ANNUAL" && !chosenFrequency) {
+      setError("Please choose a payment frequency (Monthly/Quarterly/Half-Yearly/Annual) for this plan.");
+      return;
+    }
+
     setPurchasingId(planId);
     try {
-      await policyApi.purchase({ planId, startDate });
+      await policyApi.purchase({
+        planId,
+        startDate: getStartDateForPlan(plan),
+        ...(plan.premiumType === "ANNUAL" ? { premiumFrequency: chosenFrequency } : {}),
+      });
       setSuccess(
         "Policy purchased successfully! Go to My Policies to complete payment.",
       );
@@ -201,7 +228,7 @@ export default function BrowsePlans() {
           <span className="eyebrow">Plan Marketplace</span>
           <h1>Choose protection that feels simple, clear, and trustworthy.</h1>
           <p>
-            Compare coverage, premium style, eligibility, and policy duration before you buy. No confusing steps — just select a start date and choose the right plan.
+            Compare coverage, premium style, eligibility, and policy duration before you buy. No confusing steps — just choose the right plan.
           </p>
         </div>
         <div className="marketplace-trust-card">
@@ -218,25 +245,6 @@ export default function BrowsePlans() {
       />
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
-      <div className="purchase-step-card">
-        <div className="step-badge">1</div>
-        <div className="purchase-step-copy">
-          <h3>Pick your policy start date</h3>
-          <p>Plans can start from today up to one year ahead.</p>
-        </div>
-        <div>
-          <input
-            type="date"
-            className={`form-input ${dateError ? "input-error" : ""}`}
-            value={startDate}
-            min={TODAY_STR}
-            max={MAX_START}
-            onChange={handleDateChange}
-          />
-          {dateError && <span className="field-error">{dateError}</span>}
-        </div>
-      </div>
-
       {data?.content?.length === 0 ? (
         <EmptyState message="No active plans available right now." />
       ) : (
@@ -244,9 +252,9 @@ export default function BrowsePlans() {
           {data?.content?.map((plan) => {
             const imgUrl = PLAN_IMAGES[plan.productType] || PLAN_IMAGES.DEFAULT;
             const eligibility = getPlanEligibility(plan);
+            const isTravel = plan.productType === "TRAVEL";
             return (
               <div key={plan.planId} className="plan-card">
-                {/* Photographic top strip */}
                 <div
                   className="plan-card-image"
                   style={{ backgroundImage: `url('${imgUrl}')` }}
@@ -279,6 +287,83 @@ export default function BrowsePlans() {
                         {plan.premiumType === "ANNUAL" ? "/year" : ""}
                       </span>
                     </div>
+                  </div>
+
+                  {/* EMI frequency picker — only for ANNUAL plans */}
+                  {plan.premiumType === "ANNUAL" && (
+                    <div className="plan-figures" style={{ marginTop: "0.5rem" }}>
+                      <div style={{ flex: 1 }}>
+                        <span className="figure-label">Pay As</span>
+                        <select
+                          className="form-input"
+                          value={frequencyByPlan[plan.planId] || ""}
+                          onChange={(e) =>
+                            setFrequencyByPlan((prev) => ({ ...prev, [plan.planId]: e.target.value }))
+                          }
+                        >
+                          <option value="">Choose EMI frequency</option>
+                          {PREMIUM_FREQUENCIES.map((freq) => (
+                            <option key={freq} value={freq}>
+                              {formatLabel(freq)}
+                            </option>
+                          ))}
+                        </select>
+                        {frequencyByPlan[plan.planId] && (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              marginTop: "0.25rem",
+                              display: "inline-block",
+                              color:
+                                getFrequencyBadge(frequencyByPlan[plan.planId]).tone === "discount"
+                                  ? "green"
+                                  : getFrequencyBadge(frequencyByPlan[plan.planId]).tone === "loading"
+                                  ? "#b45309"
+                                  : "gray",
+                            }}
+                          >
+                            {getFrequencyBadge(frequencyByPlan[plan.planId]).text}
+                          </span>
+                        )}
+                      </div>
+                      {frequencyByPlan[plan.planId] && (
+                        <div>
+                          <span className="figure-label">Installment</span>
+                          <span className="figure-value">
+                            {formatCurrency(
+                              calculateInstallment(plan.premiumAmount, frequencyByPlan[plan.planId]),
+                            )}
+                            {frequencyByPlan[plan.planId] !== "ANNUAL"
+                              ? ` / ${formatLabel(frequencyByPlan[plan.planId]).toLowerCase()}`
+                              : " / year"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Start date — only TRAVEL lets the customer choose; everything else starts today */}
+                  <div style={{ marginTop: "0.5rem" }}>
+                    {isTravel ? (
+                      <>
+                        <span className="figure-label">Trip Start Date</span>
+                        <input
+                          type="date"
+                          className={`form-input ${travelDateErrorByPlan[plan.planId] ? "input-error" : ""}`}
+                          value={travelDateByPlan[plan.planId] || ""}
+                          min={TODAY_STR}
+                          max={MAX_TRAVEL_START}
+                          onChange={(e) => handleTravelDateChange(plan.planId, e.target.value)}
+                        />
+                        {travelDateErrorByPlan[plan.planId] && (
+                          <span className="field-error">{travelDateErrorByPlan[plan.planId]}</span>
+                        )}
+                      </>
+                    ) : (
+                      <p className="plan-meta" style={{ margin: 0 }}>
+                        📅 Your policy will start today — {formatDate(TODAY_STR)}
+                      </p>
+                    )}
                   </div>
 
                   <p className="plan-meta">

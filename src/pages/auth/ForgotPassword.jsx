@@ -5,7 +5,13 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Alert from "../../components/common/Alert";
 import Select from "../../components/common/Select";
-import { extractErrorMessage, isBlank, isValidEmail, isValidOtp, passwordStrength } from "../../utils/validators";
+import {
+  extractErrorMessage,
+  isBlank,
+  isValidEmail,
+  isValidOtp,
+  passwordStrength,
+} from "../../utils/validators";
 
 const OTP_CHANNELS = [
   { value: "EMAIL", label: "Email" },
@@ -45,8 +51,13 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      await authApi.forgotPassword({ email: form.email.trim().toLowerCase(), otpChannel: form.otpChannel });
-      setSuccess(`OTP sent via ${form.otpChannel}. Enter it below with your new password.`);
+      await authApi.forgotPassword({
+        email: form.email.trim().toLowerCase(),
+        otpChannel: form.otpChannel,
+      });
+      setSuccess(
+        `OTP sent via ${form.otpChannel}. Enter it below with your new password.`,
+      );
       setStep(2);
     } catch (err) {
       setError(extractErrorMessage(err, "Could not send reset OTP."));
@@ -63,8 +74,10 @@ export default function ForgotPassword() {
     if (!isValidOtp(form.otp)) errors.otp = "Enter a valid 6-digit OTP";
     const strength = passwordStrength(form.newPassword);
     if (!strength.valid) errors.newPassword = strength.message;
-    if (isBlank(form.confirmPassword)) errors.confirmPassword = "Please confirm your new password";
-    else if (form.confirmPassword !== form.newPassword) errors.confirmPassword = "Passwords do not match";
+    if (isBlank(form.confirmPassword))
+      errors.confirmPassword = "Please confirm your new password";
+    else if (form.confirmPassword !== form.newPassword)
+      errors.confirmPassword = "Passwords do not match";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -95,26 +108,85 @@ export default function ForgotPassword() {
 
         <h1 className="auth-title">Reset your password</h1>
         <span className="auth-subtitle">
-          {step === 1 ? "Enter your account email to receive a reset OTP." : "Enter the OTP and choose a new password."}
+          {step === 1
+            ? "Enter your account email to receive a reset OTP."
+            : "Enter the OTP and choose a new password."}
         </span>
 
         <Alert type="error" message={error} onClose={() => setError("")} />
-        <Alert type="success" message={success} onClose={() => setSuccess("")} />
+        <Alert
+          type="success"
+          message={success}
+          onClose={() => setSuccess("")}
+        />
 
         {step === 1 ? (
           <form onSubmit={requestOtp} noValidate>
-            <Input label="Email address" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} error={fieldErrors.email} placeholder="you@example.com" required />
-            <Select label="Send OTP via" value={form.otpChannel} onChange={(e) => update("otpChannel", e.target.value)} error={fieldErrors.otpChannel} options={OTP_CHANNELS} required />
-            <Button type="submit" fullWidth loading={loading}>Send reset OTP</Button>
+            <Input
+              label="Email address"
+              type="email"
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              error={fieldErrors.email}
+              placeholder="you@example.com"
+              required
+            />
+            <Select
+              label="Send OTP via"
+              value={form.otpChannel}
+              onChange={(e) => update("otpChannel", e.target.value)}
+              error={fieldErrors.otpChannel}
+              options={OTP_CHANNELS}
+              required
+            />
+            <Button type="submit" fullWidth loading={loading}>
+              Send reset OTP
+            </Button>
           </form>
         ) : (
           <form onSubmit={resetPassword} noValidate>
             <Input label="Email address" value={form.email} disabled />
-            <Input label="OTP" value={form.otp} onChange={(e) => update("otp", e.target.value.replace(/\D/g, "").slice(0, 6))} error={fieldErrors.otp} placeholder="123456" inputMode="numeric" maxLength={6} required />
-            <Input label="New Password" type="password" value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} error={fieldErrors.newPassword} placeholder="Upper, lower, number & symbol" required />
-            <Input label="Confirm Password" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} error={fieldErrors.confirmPassword} placeholder="Confirm new password" required />
-            <Button type="submit" fullWidth loading={loading}>Reset password</Button>
-            <button type="button" className="link-btn" style={{ marginTop: "1rem" }} onClick={() => setStep(1)}>Change email / resend OTP</button>
+            <Input
+              label="OTP"
+              value={form.otp}
+              onChange={(e) =>
+                update("otp", e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              error={fieldErrors.otp}
+              placeholder="123456"
+              inputMode="numeric"
+              maxLength={6}
+              required
+            />
+            <Input
+              label="New Password"
+              type="password"
+              value={form.newPassword}
+              onChange={(e) => update("newPassword", e.target.value)}
+              error={fieldErrors.newPassword}
+              placeholder="Upper, lower, number & symbol"
+              required
+            />
+            <Input
+              label="Confirm Password"
+              type="password"
+              value={form.confirmPassword}
+              onChange={(e) => update("confirmPassword", e.target.value)}
+              error={fieldErrors.confirmPassword}
+              placeholder="Confirm new password"
+              required
+            />
+            <Button type="submit" fullWidth loading={loading}>
+              Reset password
+            </Button>
+            <button
+              type="button"
+              className="link-btn"
+              style={{ marginTop: "1rem" }}
+              onClick={() => setStep(1)}
+            >
+              Change email / resend OTP
+            </button>
           </form>
         )}
 
@@ -123,8 +195,12 @@ export default function ForgotPassword() {
         </p>
       </div>
       <div className="auth-image">
-        <p className="auth-image-quote">"Secure recovery for your protection account"</p>
-        <p className="auth-image-sub">Reset access safely using OTP verification</p>
+        <p className="auth-image-quote">
+          "Secure recovery for your protection account"
+        </p>
+        <p className="auth-image-sub">
+          Reset access safely using OTP verification
+        </p>
       </div>
     </div>
   );

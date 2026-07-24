@@ -25,7 +25,10 @@ export default function VerifyOtp() {
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (!email || !otpChannel) { navigate("/register", { replace: true }); return; }
+    if (!email || !otpChannel) {
+      navigate("/register", { replace: true });
+      return;
+    }
     startCountdown();
     return () => clearInterval(intervalRef.current);
   }, []);
@@ -34,7 +37,13 @@ export default function VerifyOtp() {
     setSecondsLeft(RESEND_WAIT);
     clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      setSecondsLeft((p) => { if (p <= 1) { clearInterval(intervalRef.current); return 0; } return p - 1; });
+      setSecondsLeft((p) => {
+        if (p <= 1) {
+          clearInterval(intervalRef.current);
+          return 0;
+        }
+        return p - 1;
+      });
     }, 1000);
   };
 
@@ -46,7 +55,10 @@ export default function VerifyOtp() {
   const handleVerify = async (e) => {
     e.preventDefault();
     setError("");
-    if (!OTP_REGEX.test(otp)) { setOtpError("Enter the 6-digit code exactly as received"); return; }
+    if (!OTP_REGEX.test(otp)) {
+      setOtpError("Enter the 6-digit code exactly as received");
+      return;
+    }
     setLoading(true);
     try {
       await authApi.verifyOtp({ email, otpChannel, otp });
@@ -60,7 +72,9 @@ export default function VerifyOtp() {
   };
 
   const handleResend = async () => {
-    setError(""); setSuccess(""); setResending(true);
+    setError("");
+    setSuccess("");
+    setResending(true);
     try {
       await authApi.resendOtp({ email, otpChannel });
       setSuccess(`New OTP sent via ${otpChannel}.`);
@@ -82,35 +96,56 @@ export default function VerifyOtp() {
           <span className="auth-logo-name">SecureCover</span>
         </div>
 
-        <h1 className="auth-title">Check your {otpChannel === "EMAIL" ? "inbox" : "phone"}</h1>
+        <h1 className="auth-title">
+          Check your {otpChannel === "EMAIL" ? "inbox" : "phone"}
+        </h1>
         <span className="auth-subtitle">
           We sent a 6-digit code via <strong>{otpChannel}</strong> to{" "}
-          {otpChannel === "EMAIL" ? <strong>{email}</strong> : "your registered mobile number"}.
-          Enter it below to activate your account.
+          {otpChannel === "EMAIL" ? (
+            <strong>{email}</strong>
+          ) : (
+            "your registered mobile number"
+          )}
+          . Enter it below to activate your account.
         </span>
 
         <Alert type="error" message={error} onClose={() => setError("")} />
-        <Alert type="success" message={success} onClose={() => setSuccess("")} />
+        <Alert
+          type="success"
+          message={success}
+          onClose={() => setSuccess("")}
+        />
 
         <form onSubmit={handleVerify} noValidate>
           <Input
             label="Verification code"
-            name="otp" value={otp}
+            name="otp"
+            value={otp}
             onChange={handleOtpChange}
             error={otpError}
             placeholder="123456"
             inputMode="numeric"
             maxLength={6}
-            style={{ fontSize: "1.5rem", letterSpacing: "0.25em", textAlign: "center" }}
+            style={{
+              fontSize: "1.5rem",
+              letterSpacing: "0.25em",
+              textAlign: "center",
+            }}
           />
-          <Button type="submit" fullWidth loading={loading}>Verify account</Button>
+          <Button type="submit" fullWidth loading={loading}>
+            Verify account
+          </Button>
         </form>
 
         <div className="resend-row" style={{ marginTop: "1.25rem" }}>
           {secondsLeft > 0 ? (
             <span className="resend-timer">Resend code in {secondsLeft}s</span>
           ) : (
-            <button className="link-btn" onClick={handleResend} disabled={resending}>
+            <button
+              className="link-btn"
+              onClick={handleResend}
+              disabled={resending}
+            >
               {resending ? "Sending..." : "Resend code"}
             </button>
           )}
@@ -121,15 +156,32 @@ export default function VerifyOtp() {
         </p>
       </div>
 
-      <div className="auth-image" style={{
-        backgroundImage: "linear-gradient(135deg, rgba(5,150,105,0.7) 0%, rgba(11,17,32,0.7) 100%), url('https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&q=80&auto=format&fit=crop')"
-      }}>
-        <p className="auth-image-quote">"One step away from complete protection"</p>
-        <p className="auth-image-sub">Verify your identity to unlock full access to your insurance dashboard</p>
+      <div
+        className="auth-image"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(5,150,105,0.7) 0%, rgba(11,17,32,0.7) 100%), url('https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&q=80&auto=format&fit=crop')",
+        }}
+      >
+        <p className="auth-image-quote">
+          "One step away from complete protection"
+        </p>
+        <p className="auth-image-sub">
+          Verify your identity to unlock full access to your insurance dashboard
+        </p>
         <div className="auth-image-stats">
-          <div><span className="auth-stat-value">🔒</span><span className="auth-stat-label">Secure OTP</span></div>
-          <div><span className="auth-stat-value">5 min</span><span className="auth-stat-label">Code validity</span></div>
-          <div><span className="auth-stat-value">Free</span><span className="auth-stat-label">All plans</span></div>
+          <div>
+            <span className="auth-stat-value">🔒</span>
+            <span className="auth-stat-label">Secure OTP</span>
+          </div>
+          <div>
+            <span className="auth-stat-value">5 min</span>
+            <span className="auth-stat-label">Code validity</span>
+          </div>
+          <div>
+            <span className="auth-stat-value">Free</span>
+            <span className="auth-stat-label">All plans</span>
+          </div>
         </div>
       </div>
     </div>

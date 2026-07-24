@@ -17,8 +17,9 @@ export default function AdminClaims() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data, loading, error } = useFetch(
-    () => claimApi.getAll({ page, size: 10, status: statusFilter || undefined }),
-    [page, statusFilter]
+    () =>
+      claimApi.getAll({ page, size: 10, status: statusFilter || undefined }),
+    [page, statusFilter],
   );
 
   const handleFilterChange = (e) => {
@@ -29,7 +30,9 @@ export default function AdminClaims() {
   if (loading) return <Loader label="Loading claims..." />;
 
   const claims = data?.content || [];
-  const decisionReady = claims.filter((claim) => String(claim.claimStatus || "").startsWith("RECOMMENDED")).length;
+  const decisionReady = claims.filter((claim) =>
+    String(claim.claimStatus || "").startsWith("RECOMMENDED"),
+  ).length;
 
   return (
     <div className="ops-page">
@@ -37,7 +40,10 @@ export default function AdminClaims() {
         <div>
           <span className="eyebrow">Decision Desk</span>
           <h1>Claims</h1>
-          <p>Review claim movement, filter by status, and make final decisions with clear operational context.</p>
+          <p>
+            Review claim movement, filter by status, and make final decisions
+            with clear operational context.
+          </p>
         </div>
         <div className="ops-hero-panel">
           <strong>{decisionReady}</strong>
@@ -49,25 +55,35 @@ export default function AdminClaims() {
       <Alert type="error" message={error} />
 
       <div className="ops-toolbar split-toolbar">
-      <div className="filter-bar">
-        <Select
-          name="status"
-          value={statusFilter}
-          onChange={handleFilterChange}
-          options={CLAIM_STATUSES}
-          placeholder="All statuses"
-        />
-      </div>
+        <div className="filter-bar">
+          <Select
+            name="status"
+            value={statusFilter}
+            onChange={handleFilterChange}
+            options={CLAIM_STATUSES}
+            placeholder="All statuses"
+          />
+        </div>
 
-        <button className="btn btn-secondary" onClick={() => exportToCsv("claims", data?.content || [], [
-          { header: "Claim No", value: (c) => c.claimNumber },
-          { header: "Customer", value: (c) => c.customerName },
-          { header: "Policy", value: (c) => c.policyNumber },
-          { header: "Amount", value: (c) => c.claimAmount },
-          { header: "Incident Date", value: (c) => c.incidentDate },
-          { header: "Status", value: (c) => c.claimStatus },
-          { header: "Assigned Insurance Operations Officer", value: (c) => c.assignedAgentName || "" },
-        ])}>Export CSV</button>
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            exportToCsv("claims", data?.content || [], [
+              { header: "Claim No", value: (c) => c.claimNumber },
+              { header: "Customer", value: (c) => c.customerName },
+              { header: "Policy", value: (c) => c.policyNumber },
+              { header: "Amount", value: (c) => c.claimAmount },
+              { header: "Incident Date", value: (c) => c.incidentDate },
+              { header: "Status", value: (c) => c.claimStatus },
+              {
+                header: "Assigned Insurance Operations Officer",
+                value: (c) => c.assignedAgentName || "",
+              },
+            ])
+          }
+        >
+          Export CSV
+        </button>
       </div>
 
       {claims.length === 0 ? (
@@ -94,9 +110,14 @@ export default function AdminClaims() {
                   <td>{claim.policyNumber}</td>
                   <td>{formatCurrency(claim.claimAmount)}</td>
                   <td>{formatDate(claim.incidentDate)}</td>
-                  <td><StatusBadge status={claim.claimStatus} /></td>
                   <td>
-                    <Link className="link-btn" to={`/admin/claims/${claim.claimId}`}>
+                    <StatusBadge status={claim.claimStatus} />
+                  </td>
+                  <td>
+                    <Link
+                      className="link-btn"
+                      to={`/admin/claims/${claim.claimId}`}
+                    >
                       View
                     </Link>
                   </td>

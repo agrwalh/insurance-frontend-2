@@ -12,7 +12,10 @@ import { formatCurrency, formatDate } from "../../utils/formatters";
 export default function MyClaims() {
   const [page, setPage] = useState(0);
 
-  const { data, loading, error } = useFetch(() => claimApi.getMyClaims({ page, size: 10 }), [page]);
+  const { data, loading, error } = useFetch(
+    () => claimApi.getMyClaims({ page, size: 10 }),
+    [page],
+  );
 
   if (loading) return <Loader label="Loading your claims..." />;
 
@@ -20,7 +23,9 @@ export default function MyClaims() {
     <div>
       <div className="page-header">
         <h1>My Claims</h1>
-        <p className="page-subtitle">Track the status of claims you've submitted</p>
+        <p className="page-subtitle">
+          Track the status of claims you've submitted
+        </p>
       </div>
 
       <Alert type="error" message={error} />
@@ -47,9 +52,14 @@ export default function MyClaims() {
                   <td>{claim.policyNumber}</td>
                   <td>{formatCurrency(claim.claimAmount)}</td>
                   <td>{formatDate(claim.incidentDate)}</td>
-                  <td><StatusBadge status={claim.claimStatus} /></td>
                   <td>
-                    <Link className="link-btn" to={`/customer/claims/${claim.claimId}`}>
+                    <StatusBadge status={claim.claimStatus} />
+                  </td>
+                  <td>
+                    <Link
+                      className="link-btn"
+                      to={`/customer/claims/${claim.claimId}`}
+                    >
                       View
                     </Link>
                   </td>

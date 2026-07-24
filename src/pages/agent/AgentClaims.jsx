@@ -17,8 +17,13 @@ export default function AgentClaims() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const { data, loading, error } = useFetch(
-    () => claimApi.getAssignedToMe({ page, size: 10, status: statusFilter || undefined }),
-    [page, statusFilter]
+    () =>
+      claimApi.getAssignedToMe({
+        page,
+        size: 10,
+        status: statusFilter || undefined,
+      }),
+    [page, statusFilter],
   );
 
   const handleFilterChange = (e) => {
@@ -29,7 +34,9 @@ export default function AgentClaims() {
   if (loading) return <Loader label="Loading claims..." />;
 
   const claims = data?.content || [];
-  const reviewQueue = claims.filter((claim) => ["SUBMITTED", "UNDER_REVIEW"].includes(claim.claimStatus)).length;
+  const reviewQueue = claims.filter((claim) =>
+    ["SUBMITTED", "UNDER_REVIEW"].includes(claim.claimStatus),
+  ).length;
 
   return (
     <div className="ops-page">
@@ -37,7 +44,10 @@ export default function AgentClaims() {
         <div>
           <span className="eyebrow">Officer Claim Queue</span>
           <h1>Review Claims</h1>
-          <p>Work through assigned claims with quick filtering, evidence context, and review actions.</p>
+          <p>
+            Work through assigned claims with quick filtering, evidence context,
+            and review actions.
+          </p>
         </div>
         <div className="ops-hero-panel">
           <strong>{reviewQueue}</strong>
@@ -58,14 +68,21 @@ export default function AgentClaims() {
             placeholder="All statuses"
           />
         </div>
-        <button className="btn btn-secondary" onClick={() => exportToCsv("assigned-claims", data?.content || [], [
-          { header: "Claim No", value: (c) => c.claimNumber },
-          { header: "Customer", value: (c) => c.customerName },
-          { header: "Policy", value: (c) => c.policyNumber },
-          { header: "Amount", value: (c) => c.claimAmount },
-          { header: "Incident Date", value: (c) => c.incidentDate },
-          { header: "Status", value: (c) => c.claimStatus },
-        ])}>Export CSV</button>
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            exportToCsv("assigned-claims", data?.content || [], [
+              { header: "Claim No", value: (c) => c.claimNumber },
+              { header: "Customer", value: (c) => c.customerName },
+              { header: "Policy", value: (c) => c.policyNumber },
+              { header: "Amount", value: (c) => c.claimAmount },
+              { header: "Incident Date", value: (c) => c.incidentDate },
+              { header: "Status", value: (c) => c.claimStatus },
+            ])
+          }
+        >
+          Export CSV
+        </button>
       </div>
 
       {claims.length === 0 ? (
@@ -92,9 +109,14 @@ export default function AgentClaims() {
                   <td>{claim.policyNumber}</td>
                   <td>{formatCurrency(claim.claimAmount)}</td>
                   <td>{formatDate(claim.incidentDate)}</td>
-                  <td><StatusBadge status={claim.claimStatus} /></td>
                   <td>
-                    <Link className="link-btn" to={`/agent/claims/${claim.claimId}`}>
+                    <StatusBadge status={claim.claimStatus} />
+                  </td>
+                  <td>
+                    <Link
+                      className="link-btn"
+                      to={`/agent/claims/${claim.claimId}`}
+                    >
                       Review
                     </Link>
                   </td>

@@ -12,11 +12,23 @@ import EmptyState from "../../components/common/EmptyState";
 import { formatCurrency, formatLabel } from "../../utils/formatters";
 import { PREMIUM_TYPES } from "../../utils/constants";
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { isBlank, isMeaningfulText, isPositiveAmount, isValidPlanOrProductName, parseStrictNumber } from "../../utils/validators";
+import {
+  isBlank,
+  isMeaningfulText,
+  isPositiveAmount,
+  isValidPlanOrProductName,
+  parseStrictNumber,
+} from "../../utils/validators";
 import { exportToCsv } from "../../utils/exportCsv";
 
 const emptyForm = {
-  productId: "", planName: "", coverageAmount: "", premiumAmount: "", premiumType: "", durationYears: "", termsAndConditions: "",
+  productId: "",
+  planName: "",
+  coverageAmount: "",
+  premiumAmount: "",
+  premiumType: "",
+  durationYears: "",
+  termsAndConditions: "",
 };
 
 const MAX_DURATION_YEARS = 50;
@@ -29,12 +41,26 @@ export default function AdminPlans() {
   const [form, setForm] = useState(emptyForm);
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
-  const { fieldErrors, generalError, setFieldError, clearFieldError, clearAll, handleApiError } = useFormErrors();
+  const {
+    fieldErrors,
+    generalError,
+    setFieldError,
+    clearFieldError,
+    clearAll,
+    handleApiError,
+  } = useFormErrors();
 
-  const { data, loading, error: fetchError, refetch } = useFetch(() => planApi.getActive({ page, size: 10 }), [page]);
+  const {
+    data,
+    loading,
+    error: fetchError,
+    refetch,
+  } = useFetch(() => planApi.getActive({ page, size: 10 }), [page]);
 
   useEffect(() => {
-    productApi.getActive({ page: 0, size: 100 }).then((res) => setProducts(res.data.data.content));
+    productApi
+      .getActive({ page: 0, size: 100 })
+      .then((res) => setProducts(res.data.data.content));
   }, []);
 
   const openCreateForm = () => {
@@ -87,23 +113,28 @@ export default function AdminPlans() {
       errors.premiumAmount = "Enter a valid amount greater than 0";
     }
 
-
-    if (isPositiveAmount(form.coverageAmount) && isPositiveAmount(form.premiumAmount)) {
+    if (
+      isPositiveAmount(form.coverageAmount) &&
+      isPositiveAmount(form.premiumAmount)
+    ) {
       const coverage = parseStrictNumber(form.coverageAmount);
       const premium = parseStrictNumber(form.premiumAmount);
       if (premium >= coverage) {
-        errors.premiumAmount = "Premium should be less than the coverage amount";
+        errors.premiumAmount =
+          "Premium should be less than the coverage amount";
       }
     }
 
-    if (isBlank(form.premiumType)) errors.premiumType = "Premium type is required";
+    if (isBlank(form.premiumType))
+      errors.premiumType = "Premium type is required";
 
     if (isBlank(form.durationYears)) {
       errors.durationYears = "Duration is required";
     } else {
       const duration = parseStrictNumber(form.durationYears);
       if (duration === null || !Number.isInteger(duration) || duration < 1) {
-        errors.durationYears = "Duration must be a whole number of at least 1 year";
+        errors.durationYears =
+          "Duration must be a whole number of at least 1 year";
       } else if (duration > MAX_DURATION_YEARS) {
         errors.durationYears = `Duration seems unrealistic (max ${MAX_DURATION_YEARS} years)`;
       }
@@ -111,8 +142,15 @@ export default function AdminPlans() {
 
     if (isBlank(form.termsAndConditions)) {
       errors.termsAndConditions = "Terms and conditions are required";
-    } else if (!isMeaningfulText(form.termsAndConditions, { minLength: 10, minWords: 3, maxLength: 2000 })) {
-      errors.termsAndConditions = "Please provide meaningful terms with at least 3 words";
+    } else if (
+      !isMeaningfulText(form.termsAndConditions, {
+        minLength: 10,
+        minWords: 3,
+        maxLength: 2000,
+      })
+    ) {
+      errors.termsAndConditions =
+        "Please provide meaningful terms with at least 3 words";
     }
 
     return errors;
@@ -124,7 +162,9 @@ export default function AdminPlans() {
 
     const errors = validate();
     if (Object.keys(errors).length > 0) {
-      Object.entries(errors).forEach(([field, message]) => setFieldError(field, message));
+      Object.entries(errors).forEach(([field, message]) =>
+        setFieldError(field, message),
+      );
       return;
     }
 
@@ -157,7 +197,12 @@ export default function AdminPlans() {
   };
 
   const handleDeactivate = async (planId) => {
-    if (!window.confirm("Deactivate this plan? Customers will no longer be able to purchase it.")) return;
+    if (
+      !window.confirm(
+        "Deactivate this plan? Customers will no longer be able to purchase it.",
+      )
+    )
+      return;
     try {
       await planApi.deactivate(planId);
       setSuccess("Plan deactivated.");
@@ -177,34 +222,58 @@ export default function AdminPlans() {
         <div>
           <span className="eyebrow">Plan Operations</span>
           <h1>Plans</h1>
-          <p>Arrange coverage, premium, duration, and terms so customers can understand plans instantly.</p>
+          <p>
+            Arrange coverage, premium, duration, and terms so customers can
+            understand plans instantly.
+          </p>
         </div>
         <div className="catalog-summary-grid">
-          <div><strong>{plans.length}</strong><span>Visible</span></div>
-          <div><strong>{products.length}</strong><span>Products</span></div>
+          <div>
+            <strong>{plans.length}</strong>
+            <span>Visible</span>
+          </div>
+          <div>
+            <strong>{products.length}</strong>
+            <span>Products</span>
+          </div>
         </div>
       </div>
 
       <div className="page-header catalog-toolbar">
         <div className="page-header-row">
           <div>
-            <p className="page-subtitle">Manage plans offered under each product</p>
+            <p className="page-subtitle">
+              Manage plans offered under each product
+            </p>
           </div>
           <div className="modal-actions" style={{ marginTop: 0 }}>
-            <Button variant="secondary" onClick={() => exportToCsv("plans", data?.content || [], [
-              { header: "Plan", value: (p) => p.planName },
-              { header: "Product", value: (p) => p.productName },
-              { header: "Coverage", value: (p) => p.coverageAmount },
-              { header: "Premium", value: (p) => p.premiumAmount },
-              { header: "Premium Type", value: (p) => p.premiumType },
-              { header: "Duration", value: (p) => p.durationYears },
-            ])}>Export CSV</Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                exportToCsv("plans", data?.content || [], [
+                  { header: "Plan", value: (p) => p.planName },
+                  { header: "Product", value: (p) => p.productName },
+                  { header: "Coverage", value: (p) => p.coverageAmount },
+                  { header: "Premium", value: (p) => p.premiumAmount },
+                  { header: "Premium Type", value: (p) => p.premiumType },
+                  { header: "Duration", value: (p) => p.durationYears },
+                ])
+              }
+            >
+              Export CSV
+            </Button>
             <Button onClick={openCreateForm}>+ New Plan</Button>
           </div>
         </div>
       </div>
 
-      <Alert type="error" message={generalError || fetchError} onClose={() => clearAll()} />
+      {!showForm && (
+        <Alert
+          type="error"
+          message={generalError || fetchError}
+          onClose={clearAll}
+        />
+      )}
       <Alert type="success" message={success} onClose={() => setSuccess("")} />
 
       {plans.length === 0 ? (
@@ -213,7 +282,14 @@ export default function AdminPlans() {
         <div className="table-wrap catalog-table">
           <table className="data-table">
             <thead>
-              <tr><th>Plan</th><th>Product</th><th>Coverage</th><th>Premium</th><th>Duration</th><th></th></tr>
+              <tr>
+                <th>Plan</th>
+                <th>Product</th>
+                <th>Coverage</th>
+                <th>Premium</th>
+                <th>Duration</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {plans.map((plan) => (
@@ -221,11 +297,24 @@ export default function AdminPlans() {
                   <td>{plan.planName}</td>
                   <td>{plan.productName}</td>
                   <td>{formatCurrency(plan.coverageAmount)}</td>
-                  <td>{formatCurrency(plan.premiumAmount)} ({formatLabel(plan.premiumType)})</td>
+                  <td>
+                    {formatCurrency(plan.premiumAmount)} (
+                    {formatLabel(plan.premiumType)})
+                  </td>
                   <td>{plan.durationYears} yr</td>
                   <td className="action-cell">
-                    <button className="link-btn" onClick={() => openEditForm(plan)}>Edit</button>
-                    <button className="link-btn link-btn-danger" onClick={() => handleDeactivate(plan.planId)}>Deactivate</button>
+                    <button
+                      className="link-btn"
+                      onClick={() => openEditForm(plan)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="link-btn link-btn-danger"
+                      onClick={() => handleDeactivate(plan.planId)}
+                    >
+                      Deactivate
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -240,13 +329,18 @@ export default function AdminPlans() {
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3>{editingId ? "Edit Plan" : "New Plan"}</h3>
+
+            <Alert type="error" message={generalError} onClose={clearAll} />
+
             {editingId && (
               <div className="safety-warning-card">
                 <strong>Important pricing safeguard</strong>
                 <p>
-                  Premium, coverage, duration, and premium type changes should apply to future purchases only.
-                  Already issued policies must keep their original purchased values. If you need different pricing for
-                  customers, prefer creating a new plan version and deactivating the old one.
+                  Premium, coverage, duration, and premium type changes should
+                  apply to future purchases only. Already issued policies must
+                  keep their original purchased values. If you need different
+                  pricing for customers, prefer creating a new plan version and
+                  deactivating the old one.
                 </p>
               </div>
             )}
@@ -257,7 +351,10 @@ export default function AdminPlans() {
                 value={form.productId}
                 onChange={handleChange}
                 error={fieldErrors.productId}
-                options={products.map((p) => ({ value: p.productId, label: p.productName }))}
+                options={products.map((p) => ({
+                  value: p.productId,
+                  label: p.productName,
+                }))}
                 placeholder="Select product"
               />
               <Input
@@ -304,7 +401,11 @@ export default function AdminPlans() {
                   placeholder="Select type"
                 />
                 <Input
-                  label={form.premiumType === "ONE_TIME" ? "Coverage Validity (years)" : "Policy Duration (years)"}
+                  label={
+                    form.premiumType === "ONE_TIME"
+                      ? "Coverage Validity (years)"
+                      : "Policy Duration (years)"
+                  }
                   name="durationYears"
                   type="number"
                   min="1"
@@ -332,11 +433,23 @@ export default function AdminPlans() {
                   placeholder="Key terms customers should know..."
                   maxLength={2000}
                 />
-                {fieldErrors.termsAndConditions && <span className="field-error">{fieldErrors.termsAndConditions}</span>}
+                {fieldErrors.termsAndConditions && (
+                  <span className="field-error">
+                    {fieldErrors.termsAndConditions}
+                  </span>
+                )}
               </div>
               <div className="modal-actions">
-                <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" loading={saving}>{editingId ? "Save Changes" : "Create Plan"}</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" loading={saving}>
+                  {editingId ? "Save Changes" : "Create Plan"}
+                </Button>
               </div>
             </form>
           </div>

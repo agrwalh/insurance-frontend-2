@@ -135,8 +135,12 @@ export default function AllPolicies() {
   if (loading) return <Loader label="Loading policies..." />;
 
   const policies = data?.content || [];
-  const activeCount = policies.filter((policy) => policy.status === "ACTIVE").length;
-  const pendingCount = policies.filter((policy) => policy.status === "PENDING_PAYMENT").length;
+  const activeCount = policies.filter(
+    (policy) => policy.status === "ACTIVE",
+  ).length;
+  const pendingCount = policies.filter(
+    (policy) => policy.status === "PENDING_PAYMENT",
+  ).length;
 
   return (
     <div className="ops-page">
@@ -144,7 +148,10 @@ export default function AllPolicies() {
         <div>
           <span className="eyebrow">Policy Registry</span>
           <h1>All Policies</h1>
-          <p>Monitor issued policies, premium readiness, customer ownership, and lifecycle status in one clean view.</p>
+          <p>
+            Monitor issued policies, premium readiness, customer ownership, and
+            lifecycle status in one clean view.
+          </p>
         </div>
         <div className="ops-hero-panel">
           <strong>{activeCount}</strong>
@@ -248,8 +255,8 @@ export default function AllPolicies() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3>Issue Policy to Customer</h3>
             <p className="form-section-hint">
-              Insurance Operations Officer/Admin assisted issuance creates a policy in Pending Payment
-              state.
+              Insurance Operations Officer/Admin assisted issuance creates a
+              policy in Pending Payment state.
             </p>
             <form onSubmit={handleIssuePolicy} noValidate>
               <Select

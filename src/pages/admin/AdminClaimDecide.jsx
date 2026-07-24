@@ -10,9 +10,18 @@ import Button from "../../components/common/Button";
 import Select from "../../components/common/Select";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
-import { formatCurrency, formatDate, formatDateTime, formatLabel } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatLabel,
+} from "../../utils/formatters";
 import { ADMIN_DECISION_OPTIONS } from "../../utils/constants";
-import { isBlank, isMeaningfulText, extractErrorMessage } from "../../utils/validators";
+import {
+  isBlank,
+  isMeaningfulText,
+  extractErrorMessage,
+} from "../../utils/validators";
 
 const MIN_REMARKS_LENGTH = 15;
 
@@ -73,8 +82,16 @@ export default function AdminClaimDecide() {
     if (isBlank(remarks)) {
       setRemarksError("Remarks are required to justify the final decision");
       hasError = true;
-    } else if (!isMeaningfulText(remarks, { minLength: MIN_REMARKS_LENGTH, minWords: 4, maxLength: 1000 })) {
-      setRemarksError("Please explain your final decision with at least 4 meaningful words");
+    } else if (
+      !isMeaningfulText(remarks, {
+        minLength: MIN_REMARKS_LENGTH,
+        minWords: 4,
+        maxLength: 1000,
+      })
+    ) {
+      setRemarksError(
+        "Please explain your final decision with at least 4 meaningful words",
+      );
       hasError = true;
     }
     if (hasError) return;
@@ -97,14 +114,21 @@ export default function AdminClaimDecide() {
   if (!claim) return <EmptyState message="Claim not found." />;
 
   const finalized = ["APPROVED", "REJECTED"].includes(claim.claimStatus);
-  const readyForDecision = ["RECOMMENDED_FOR_APPROVAL", "RECOMMENDED_FOR_REJECTION"].includes(claim.claimStatus);
+  const readyForDecision = [
+    "RECOMMENDED_FOR_APPROVAL",
+    "RECOMMENDED_FOR_REJECTION",
+  ].includes(claim.claimStatus);
 
   return (
     <div>
       <div className="page-header">
-        <button className="link-btn" onClick={() => navigate("/admin/claims")}>← Back to claims</button>
+        <button className="link-btn" onClick={() => navigate("/admin/claims")}>
+          ← Back to claims
+        </button>
         <h1>Claim {claim.claimNumber}</h1>
-        <p className="page-subtitle">Filed by {claim.customerName} · Policy {claim.policyNumber}</p>
+        <p className="page-subtitle">
+          Filed by {claim.customerName} · Policy {claim.policyNumber}
+        </p>
       </div>
 
       <Alert type="error" message={error} onClose={() => setError("")} />
@@ -113,26 +137,83 @@ export default function AdminClaimDecide() {
       <div className="detail-grid">
         <Card title="Claim Details">
           <dl className="detail-list">
-            <div><dt>Status</dt><dd><StatusBadge status={claim.claimStatus} /></dd></div>
-            <div><dt>Claim Amount</dt><dd>{formatCurrency(claim.claimAmount)}</dd></div>
-            <div><dt>Incident Date</dt><dd>{formatDate(claim.incidentDate)}</dd></div>
-            <div><dt>Reason</dt><dd>{claim.claimReason}</dd></div>
-            {claim.agentRemarks && <div><dt>Insurance Operations Officer Remarks</dt><dd>{claim.agentRemarks}</dd></div>}
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <StatusBadge status={claim.claimStatus} />
+              </dd>
+            </div>
+            <div>
+              <dt>Claim Amount</dt>
+              <dd>{formatCurrency(claim.claimAmount)}</dd>
+            </div>
+            <div>
+              <dt>Incident Date</dt>
+              <dd>{formatDate(claim.incidentDate)}</dd>
+            </div>
+            <div>
+              <dt>Reason</dt>
+              <dd>{claim.claimReason}</dd>
+            </div>
+            {claim.agentRemarks && (
+              <div>
+                <dt>Insurance Operations Officer Remarks</dt>
+                <dd>{claim.agentRemarks}</dd>
+              </div>
+            )}
           </dl>
         </Card>
 
         {policy && (
           <Card title="Policy Snapshot">
             <dl className="detail-list">
-              <div><dt>Policy Number</dt><dd>{policy.policyNumber}</dd></div>
-              <div><dt>Plan</dt><dd>{policy.planName}</dd></div>
-              <div><dt>Product Type</dt><dd>{formatLabel(policy.productType)}</dd></div>
-              <div><dt>Coverage</dt><dd>{formatCurrency(policy.coverageAmount)}</dd></div>
-              <div><dt>Premium</dt><dd>{formatCurrency(policy.premiumAmount)} {policy.premiumType === "ANNUAL" ? "/ year" : ""}</dd></div>
-              <div><dt>Policy Status</dt><dd><StatusBadge status={policy.status} /></dd></div>
-              <div><dt>Start - End</dt><dd>{formatDate(policy.startDate)} → {formatDate(policy.endDate)}</dd></div>
-              <div><dt>Total Paid</dt><dd>{formatCurrency(policy.totalPremiumPaid)}</dd></div>
-              {policy.premiumType === "ANNUAL" && <div><dt>Premiums Paid</dt><dd>{policy.premiumsPaid ?? 0}/{policy.durationYears ?? "-"}</dd></div>}
+              <div>
+                <dt>Policy Number</dt>
+                <dd>{policy.policyNumber}</dd>
+              </div>
+              <div>
+                <dt>Plan</dt>
+                <dd>{policy.planName}</dd>
+              </div>
+              <div>
+                <dt>Product Type</dt>
+                <dd>{formatLabel(policy.productType)}</dd>
+              </div>
+              <div>
+                <dt>Coverage</dt>
+                <dd>{formatCurrency(policy.coverageAmount)}</dd>
+              </div>
+              <div>
+                <dt>Premium</dt>
+                <dd>
+                  {formatCurrency(policy.premiumAmount)}{" "}
+                  {policy.premiumType === "ANNUAL" ? "/ year" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Policy Status</dt>
+                <dd>
+                  <StatusBadge status={policy.status} />
+                </dd>
+              </div>
+              <div>
+                <dt>Start - End</dt>
+                <dd>
+                  {formatDate(policy.startDate)} → {formatDate(policy.endDate)}
+                </dd>
+              </div>
+              <div>
+                <dt>Total Paid</dt>
+                <dd>{formatCurrency(policy.totalPremiumPaid)}</dd>
+              </div>
+              {policy.premiumType === "ANNUAL" && (
+                <div>
+                  <dt>Premiums Paid</dt>
+                  <dd>
+                    {policy.premiumsPaid ?? 0}/{policy.durationYears ?? "-"}
+                  </dd>
+                </div>
+              )}
             </dl>
           </Card>
         )}
@@ -146,9 +227,17 @@ export default function AdminClaimDecide() {
                 <li key={h.historyId} className="timeline-item">
                   <span className="timeline-dot" />
                   <div>
-                    <p className="timeline-status">{formatLabel(h.previousStatus)} → {formatLabel(h.newStatus)}</p>
-                    <p className="timeline-meta">{h.updatedByName} ({h.updatedByRole}) · {formatDateTime(h.updatedAt)}</p>
-                    {h.remarks && <p className="timeline-remarks">"{h.remarks}"</p>}
+                    <p className="timeline-status">
+                      {formatLabel(h.previousStatus)} →{" "}
+                      {formatLabel(h.newStatus)}
+                    </p>
+                    <p className="timeline-meta">
+                      {h.updatedByName} ({h.updatedByRole}) ·{" "}
+                      {formatDateTime(h.updatedAt)}
+                    </p>
+                    {h.remarks && (
+                      <p className="timeline-remarks">"{h.remarks}"</p>
+                    )}
                   </div>
                 </li>
               ))}
@@ -164,8 +253,16 @@ export default function AdminClaimDecide() {
           <ul className="document-list">
             {documents.map((doc) => (
               <li key={doc.documentId} className="document-item">
-                <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer">{doc.documentName}</a>
-                <span className="document-meta">{formatLabel(doc.documentType)} · {doc.fileSizeReadable}</span>
+                <a
+                  href={doc.documentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {doc.documentName}
+                </a>
+                <span className="document-meta">
+                  {formatLabel(doc.documentType)} · {doc.fileSizeReadable}
+                </span>
               </li>
             ))}
           </ul>
@@ -174,15 +271,24 @@ export default function AdminClaimDecide() {
 
       <Card title="Final Decision">
         {finalized ? (
-          <p className="form-section-hint">A final decision has already been made on this claim: <StatusBadge status={claim.claimStatus} /></p>
+          <p className="form-section-hint">
+            A final decision has already been made on this claim:{" "}
+            <StatusBadge status={claim.claimStatus} />
+          </p>
         ) : !readyForDecision ? (
-          <p className="form-section-hint">This claim hasn't been reviewed by an insurance operations officer yet. Current status: <StatusBadge status={claim.claimStatus} /></p>
+          <p className="form-section-hint">
+            This claim hasn't been reviewed by an insurance operations officer
+            yet. Current status: <StatusBadge status={claim.claimStatus} />
+          </p>
         ) : (
           <form onSubmit={handleDecisionSubmit} noValidate>
             <Select
               label="Final Decision"
               value={finalStatus}
-              onChange={(e) => { setFinalStatus(e.target.value); setDecisionError(""); }}
+              onChange={(e) => {
+                setFinalStatus(e.target.value);
+                setDecisionError("");
+              }}
               error={decisionError}
               options={ADMIN_DECISION_OPTIONS}
               placeholder="Choose final decision"
@@ -193,17 +299,25 @@ export default function AdminClaimDecide() {
                 className={`form-input ${remarksError ? "input-error" : ""}`}
                 rows={3}
                 value={remarks}
-                onChange={(e) => { setRemarks(e.target.value); setRemarksError(""); }}
+                onChange={(e) => {
+                  setRemarks(e.target.value);
+                  setRemarksError("");
+                }}
                 placeholder="Explain your final decision..."
                 maxLength={1000}
               />
               {remarksError ? (
                 <span className="field-error">{remarksError}</span>
               ) : (
-                <span className="field-hint">{remarks.length}/1000 characters (minimum {MIN_REMARKS_LENGTH})</span>
+                <span className="field-hint">
+                  {remarks.length}/1000 characters (minimum {MIN_REMARKS_LENGTH}
+                  )
+                </span>
               )}
             </div>
-            <Button type="submit" loading={submitting}>Record Decision</Button>
+            <Button type="submit" loading={submitting}>
+              Record Decision
+            </Button>
           </form>
         )}
       </Card>
